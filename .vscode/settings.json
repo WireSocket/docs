@@ -1,0 +1,9 @@
+{
+    "json.schemaDownload.enable": true,
+    "json.schemas": [
+        {
+            "fileMatch": ["**/docs.json"],
+            "url": ".vscode/mintlify-schema.json"
+        }
+    ]
+}

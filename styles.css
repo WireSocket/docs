@@ -1,0 +1,20 @@
+/* ============================= */
+/* Text selection — text color only */
+/* ============================= */
+
+::selection {
+  color: #0058BC;
+}
+
+::-moz-selection {
+  color: #0058BC;
+}
+
+
+/* ============================= */
+/* Active sidebar item — text only */
+/* ============================= */
+
+[data-active="true"] {
+  color: #0058BC !important;
+}
