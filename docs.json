@@ -1,6 +1,6 @@
 {
   "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "WireSocket",
   "colors": {
     "primary": "#0047AB",
     "light": "#0058BC",
@@ -91,7 +91,7 @@
     "links": [
       {
         "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "href": "mailto:support@wiresocket.com"
       }
     ],
     "primary": {
