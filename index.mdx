@@ -47,6 +47,22 @@ WireSocket speaks the Yjs sync protocol. Any library or editor that supports Yjs
 - ❌ Not a lock-in strategy
 
 If you stop using WireSocket, change the WebSocket URL. Your documents are in your database.
+## Zero Vendor Lock-In
+
+WireSocket is just a WebSocket endpoint. Your documents live in your database, your auth lives in your system, and your editor stays exactly as it is.
+
+Migrating away from WireSocket means changing one URL. That's it.
+```js
+// Today
+const provider = new WebsocketProvider('wss://ws.wiresocket.com', docId, ydoc)
+
+// Self-hosted or switched provider
+const provider = new WebsocketProvider('wss://your-own-server.com', docId, ydoc)
+```
+
+No data export requests. No migration tools. No lock-in by design.
+
+We stay competitive by being good infrastructure, not by making it painful to leave.
 
 ## Get Started
 
