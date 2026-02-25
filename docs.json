@@ -34,7 +34,8 @@
             "pages": [
               "internals/plans-and-limits",
               "internals/error-reference",
-              "internals/reliability"
+              "internals/reliability",
+              "internals/rate-limits"
             ]
           }
         ]

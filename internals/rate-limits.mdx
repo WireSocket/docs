@@ -1,0 +1,67 @@
+---
+title: "Rate Limits"
+description: "Rate limiting policies for WireSocket dataplane endpoints."
+---
+
+WireSocket applies specific rate limit policies to each endpoint based on its resource cost and typical usage pattern. Limits are isolated per policy — hitting a limit on one endpoint does not affect other endpoints.
+
+---
+
+## Policies
+
+| Policy | Limit | Window |
+|---|---|---|
+| `STANDARD` | 60 requests | 60 seconds |
+| `STRICT` | 12 requests | 60 seconds |
+
+---
+
+## Endpoint Mapping
+
+| Endpoint | Policy | Notes |
+|---|---|---|
+| `wss://ws.wiresocket.com` | `STANDARD` | 60 attempts/min is generous — a normal client connects once and holds the connection open for hours |
+| `/discovery` | `STANDARD` | Called once before opening a WebSocket — 60/min is more than enough |
+| `/usage` | `STRICT` | 12/min = once every 5 seconds. Prevents automated scrapers from hammering global database aggregation |
+
+---
+
+## Key Behaviors
+
+**Isolated buckets** — Each policy has its own independent quota. If a tenant hits the `/usage` limit, their WebSocket connections and discovery requests are completely unaffected.
+
+**IP-based identification** — Limits are enforced per IP address using verified client IPs via trusted proxy headers (`X-Forwarded-For`).
+
+**Retry-After header** — Every `429 Too Many Requests` response includes a `Retry-After: 60` header telling your client exactly when to retry.
+
+**Fail-open** — If the rate limiter's Redis store encounters an error, the limiter fails open. Legitimate users are never blocked due to an internal issue.
+
+---
+
+## Handling 429 Errors
+```js
+async function fetchWithBackoff(url, options, retries = 3) {
+  const res = await fetch(url, options)
+
+  if (res.status === 429) {
+    const retryAfter = parseInt(res.headers.get('Retry-After') ?? '60')
+    if (retries > 0) {
+      await sleep(retryAfter * 1000)
+      return fetchWithBackoff(url, options, retries - 1)
+    }
+    throw new Error('Rate limit exceeded. Try again later.')
+  }
+
+  return res
+}
+```
+
+---
+
+## Recommendations
+
+**Usage API** — Poll `/usage` no more than once per minute for admin dashboards. The `STRICT` policy allows up to once every 5 seconds, but once per minute is sufficient for most use cases.
+
+**Discovery API** — Call `/discovery` once per document open and cache the result for the session. There is no need to re-call it on every reconnect unless the session has fully ended.
+
+**Shared IPs** — The `STANDARD` limit of 60/min comfortably supports small teams sharing a single office IP. For larger environments, cache Discovery results at the application level to reduce per-IP request volume.
