@@ -1,80 +1,132 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "Sign up, create your first app, and sync your first document in minutes."
 ---
 
-## Get started in three steps
+## 1. Sign Up
 
-Get your documentation site running locally and make your first customization.
+Create your WireSocket account at [dashboard.wiresocket.com](https://dashboard.wiresocket.com).
 
-### Step 1: Set up your local environment
+Your tenant account is free. No credit card required to get started.
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+---
 
-### Step 2: Deploy your changes
+## 2. Create an OAuth 2 Application
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+To connect to the WireSocket dataplane, a **JWT access token** is required. Tokens are issued through an **OAuth 2 Machine-to-Machine (M2M)** flow — to set this up, you first need to create an OAuth 2 app in the dashboard.
+<Steps>
+  <Step title="Open the Apps section">
+    Navigate to **Apps** in the dashboard sidebar and click **Create App**.
+  </Step>
+  <Step title="Name your app">
+    Give your app a name that identifies the product or service connecting to WireSocket (e.g. `my-editor-prod`).
+  </Step>
+  <Step title="Set the License Region">
+    Choose the **License Region** for this app. This defines where your app's license and plan data is stored.
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    <Warning>
+      The License Region cannot be changed after the app is created. Choose the region closest to your primary user base.
+    </Warning>
+  </Step>
+  <Step title="Assign a plan">
+    Select a plan for this app. Your **first app is free**. All subsequent apps require a paid plan assigned at creation.
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    Your app cannot connect to the WireSocket dataplane until a plan is assigned.
+  </Step>
+  <Step title="Save your credentials">
+    After creation, copy your **Client ID** and **Client Secret** immediately. The secret is shown only once.
 
-### Step 3: Go live
+    <Warning>
+      Never expose your `client_secret` in browser code or public repositories. It is a server-side credential only.
+    </Warning>
+  </Step>
+</Steps>
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+---
 
-## Next steps
+## 3. Get an Access Token
 
-Now that you have your docs running, explore these key features:
+Exchange your credentials for a JWT access token from your **backend server**.
+```bash
+curl -X POST https://auth.wiresocket.com/oauth2/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials" \
+  -d "client_id=YOUR_CLIENT_ID" \
+  -d "client_secret=YOUR_CLIENT_SECRET"
+```
+
+**Response:**
+```json
+{
+  "access_token": "eyJ...",
+  "refresh_token": "eyJ...",
+  "token_type": "Bearer",
+  "expires_in": 900
+}
+```
+
+<Info>
+  Access tokens are valid for **15 minutes**. Use the `refresh_token` to obtain a new access token without re-authenticating. See [Token Renewal](/authentication) for implementation guidance.
+</Info>
+
+The JWT contains your app's plan details and license limits. The WireSocket dataplane reads these claims directly — no database lookup required.
+
+---
+
+## 4. Connect to the Dataplane
+
+Pass the access token when connecting your Yjs provider to the WireSocket dataplane. Two methods are supported:
+
+<Tabs>
+  <Tab title="URL Parameter">
+```js
+    import * as Y from 'yjs'
+    import { WebsocketProvider } from 'y-websocket'
+
+    const ydoc = new Y.Doc()
+
+    const provider = new WebsocketProvider(
+      'wss://ws.wiresocket.com?access_token=YOUR_ACCESS_TOKEN',
+      'your-document-id',
+      ydoc
+    )
+```
+  </Tab>
+  <Tab title="WebSocket Subprotocol">
+```js
+    import * as Y from 'yjs'
+    import { WebsocketProvider } from 'y-websocket'
+
+    const ydoc = new Y.Doc()
+
+    const provider = new WebsocketProvider(
+      'wss://ws.wiresocket.com',
+      'your-document-id',
+      ydoc,
+      {
+        WebSocketPolyfill: undefined,
+        protocols: ['Bearer', 'YOUR_ACCESS_TOKEN']
+      }
+    )
+```
+  </Tab>
+</Tabs>
+
+<Info>
+  The subprotocol method is preferred for security as it keeps the token out of server access logs and browser history.
+</Info>
+
+---
+
+## You're Connected
+
+Your Yjs document is now syncing through WireSocket. Any changes made by connected clients are propagated in real-time within the document's region.
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Token Renewal & Auth" icon="key-skeleton" href="/authentication">
+    Implement refresh token rotation and keep connections alive beyond 15 minutes.
+  </Card>
+  <Card title="Dataplane & Editor Setup" icon="plug" href="/dataplane">
+    Handle regions, wrong-region errors, reconnection logic, and editor integration.
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
