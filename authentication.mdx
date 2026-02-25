@@ -178,11 +178,28 @@ If a plan is cancelled or an app is deleted, **existing connections are not imme
 
 ## Token Verification
 
-The WireSocket dataplane verifies access token signatures using a tenant-scoped JWKS endpoint:
+WireSocket signs all access tokens using a **tenant-scoped RSA key pair**. If you need to verify token signatures server-side in your own infrastructure — for example, to validate a token independently without calling WireSocket APIs — you can fetch your tenant's current public keys from:
 ```
 https://api.wiresocket.com/{tenantId}/.well-known/jwks
 ```
 
-Replace `{tenantId}` with your tenant GUID, which is available in the `tenantid` claim of your JWT.
+Replace `{tenantId}` with your tenant GUID, available in the `tenantid` claim of your JWT.
 
-If you are building a custom dataplane integration or need to verify tokens server-side in your own infrastructure, use this endpoint to fetch the current public keys for your tenant.
+### Key Rotation & Multiple Keys
+
+WireSocket automatically rotates your tenant's signing key on a **30-day cycle**. During rotation, the endpoint returns **up to two public keys**:
+
+| Key | Description |
+|---|---|
+| Active key | Signs all new tokens |
+| Retired key | Previous key, valid for up to **24 hours** after rotation |
+
+If you are caching the JWKS response locally, re-fetch it when signature validation fails to pick up a newly rotated key.
+
+<Warning>
+  Validate against **all keys** returned in the response, not just the first. Pinning to a single key will cause verification failures during the 24-hour rotation window.
+</Warning>
+
+<Info>
+  This endpoint is rate limited to **20 requests per 10 minutes**. Local caching is strongly recommended.
+</Info>
