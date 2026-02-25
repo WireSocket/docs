@@ -1,5 +1,6 @@
 {
   "theme": "mint",
+
   "name": "WireSocket",
   "description": "Real-time Yjs sync infrastructure for collaborative applications. Stateless, edge-deployed WebSocket servers with global routing, JWT auth, and zero vendor lock-in.",
   "colors": {
