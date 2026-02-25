@@ -63,11 +63,6 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Dashboard",
-          "href": "https://dashboard.wiresocket.com",
-          "icon": "gauge"
-        },
-        {
           "anchor": "Blog",
           "href": "https://wiresocket.com/blog",
           "icon": "newspaper"
