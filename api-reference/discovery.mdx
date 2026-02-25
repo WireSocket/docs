@@ -14,8 +14,7 @@ See [Document Discovery](/core-concepts/dataplane#document-discovery) for full i
 GET https://{region}.ws.wiresocket.com/discovery
 ```
 
-Replace `{region}` with any available region (e.g. `eu`). The endpoint will return the correct node URL regardless of which region you call.
-
+Replace `{region}` with any available region (e.g. `eu`). Document locations are stored in a global registry — any regional node can look up any document regardless of where it is hosted and return the correct node URL.
 ---
 
 ## Authentication
