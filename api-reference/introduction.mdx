@@ -10,8 +10,7 @@ The WireSocket dataplane exposes three endpoints for tenant applications. All en
 https://{region}.ws.wiresocket.com
 ```
 
-Replace `{region}` with your target region (e.g. `eu`). Use the [Discovery API](/api-reference/discovery) to resolve the correct region for a document before connecting.
-
+Replace `{region}` with any available region (e.g. `eu`). Document locations are stored in a global registry — any regional node can look up any document regardless of where it is hosted and return the correct node URL.
 ## Authentication
 
 All endpoints require a valid JWT access token issued by the WireSocket control plane. See [Authentication](/authentication) for how to obtain and refresh tokens.
