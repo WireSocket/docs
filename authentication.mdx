@@ -1,0 +1,177 @@
+---
+title: "Authentication"
+description: "How WireSocket issues and validates JWT tokens for dataplane access."
+---
+
+WireSocket uses **OAuth 2 Machine-to-Machine (M2M) client credentials flow** to authenticate applications. There is no interactive or user-facing login — all authentication happens server-side using your app's `client_id` and `client_secret`.
+
+---
+
+## Obtaining a Token
+
+Call the token endpoint from your **backend server only**. Never expose your `client_secret` in browser or mobile code.
+```bash
+curl -X POST https://api.wiresocket.com/connect/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials" \
+  -d "client_id=YOUR_CLIENT_ID" \
+  -d "client_secret=YOUR_CLIENT_SECRET" \
+  -d "scope=WireSocket.API offline_access"
+```
+
+**Response:**
+```json
+{
+  "access_token": "eyJ...",
+  "refresh_token": "eyJ...",
+  "token_type": "Bearer",
+  "expires_in": 900
+}
+```
+
+| Field | Value |
+|---|---|
+| `expires_in` | 900 seconds (15 minutes) |
+| `scope` | `WireSocket.API offline_access` |
+
+<Warning>
+  `offline_access` scope is required to receive a `refresh_token`. Without it you cannot renew sessions without re-authenticating with your `client_secret`.
+</Warning>
+
+---
+
+## JWT Claims
+
+The access token is a signed JWT. Your backend can decode it to inspect the claims — the dataplane reads these directly with no database lookup.
+```json
+{
+  "iss": "https://api.wiresocket.com",
+  "sub": "YOUR_CLIENT_ID",
+  "aud": "wiresocket",
+  "scope": "WireSocket.API offline_access",
+
+  "tenantid": "3f9a6c6e-2d9e-4c3e-a1f1-3b2c99e6b111",
+  "appId": "7b1c0d8c-2d01-4c7c-b3b1-111aaa222bbb",
+  "licenseRegionCode": "IN",
+
+  "allowed_domain_1": "example.com",
+  "allowed_domain_2": "staging.example.com",
+  "allowed_domain_3": "dev.example.com",
+
+  "limits": "{\"maxConnections\":100,\"maxDocuments\":500,\"maxUsersPerDoc\":50,\"opsPerMinute\":10000}",
+
+  "exp": 1740470000,
+  "iat": 1740466400
+}
+```
+
+### Claim Reference
+
+| Claim | Description |
+|---|---|
+| `sub` | Your `client_id` |
+| `tenantid` | Your tenant GUID — used for multi-tenant isolation |
+| `appId` | Your application GUID |
+| `licenseRegionCode` | Region where your license data is stored (`US`, `EU`, `IN`, etc.) |
+| `allowed_domain_1/2/3` | Domains permitted to connect to the dataplane |
+| `limits` | Stringified JSON containing your plan limits |
+
+### Plan Limits
+
+The `limits` claim contains your plan's resource caps:
+
+| Limit | Description |
+|---|---|
+| `maxConnections` | Total concurrent WebSocket connections allowed |
+| `maxDocuments` | Total concurrent documents allowed |
+| `maxUsersPerDoc` | Maximum users in a single document session |
+| `opsPerMinute` | Maximum CRDT operations per minute |
+
+---
+
+## Token Renewal
+
+Access tokens expire after **15 minutes**. Use the refresh token to obtain a new access token without re-authenticating with your `client_secret`.
+```bash
+curl -X POST https://api.wiresocket.com/connect/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=refresh_token" \
+  -d "refresh_token=YOUR_REFRESH_TOKEN" \
+  -d "client_id=YOUR_CLIENT_ID"
+```
+
+<Info>
+  Every refresh issues a **new refresh token** and invalidates the old one. Store the latest refresh token after every renewal.
+</Info>
+
+### Refresh Token Expiry
+
+Refresh tokens are valid for **7 days**. If a refresh token expires, you must re-authenticate using your `client_id` and `client_secret` to start a new session.
+```
+Access token expires (15 min)
+        ↓
+Renew using refresh token
+        ↓
+New access token + new refresh token issued
+        ↓
+Repeat until refresh token expires (7 days)
+        ↓
+Re-authenticate with client_id + client_secret
+```
+
+---
+
+## Passing the Token to the Dataplane
+
+When connecting your Yjs provider, pass the access token using one of two methods. Both are supported in all regions.
+
+<Tabs>
+  <Tab title="WebSocket Subprotocol (Recommended)">
+```js
+    const provider = new WebsocketProvider(
+      'wss://ws.wiresocket.com',
+      'your-document-id',
+      ydoc,
+      {
+        protocols: ['Bearer', 'YOUR_ACCESS_TOKEN']
+      }
+    )
+```
+    Preferred — keeps the token out of server access logs and browser history.
+  </Tab>
+  <Tab title="URL Parameter">
+```js
+    const provider = new WebsocketProvider(
+      'wss://ws.wiresocket.com?access_token=YOUR_ACCESS_TOKEN',
+      'your-document-id',
+      ydoc
+    )
+```
+  </Tab>
+</Tabs>
+
+---
+
+## Allowed Domains
+
+Each app supports up to **3 allowed domains**. The dataplane validates the request origin against this list and rejects connections from unlisted domains.
+
+Use the three slots for your environments:
+
+| Slot | Recommended Use |
+|---|---|
+| `allowed_domain_1` | Production |
+| `allowed_domain_2` | Staging |
+| `allowed_domain_3` | Local development |
+
+Allowed domains are configured during app creation in the dashboard and are embedded in the JWT.
+
+---
+
+## Plan Cancellation & Revocation
+
+If a plan is cancelled or an app is deleted, **existing connections are not immediately terminated**. Active sessions continue until the current access token expires. No new tokens can be issued after cancellation.
+
+<Info>
+  This means tenants have up to 15 minutes of continued access after a plan change takes effect. Plan accordingly if you need immediate revocation.
+</Info>
