@@ -175,3 +175,14 @@ If a plan is cancelled or an app is deleted, **existing connections are not imme
 <Info>
   This means tenants have up to 15 minutes of continued access after a plan change takes effect. Plan accordingly if you need immediate revocation.
 </Info>
+
+## Token Verification
+
+The WireSocket dataplane verifies access token signatures using a tenant-scoped JWKS endpoint:
+```
+https://api.wiresocket.com/{tenantId}/.well-known/jwks
+```
+
+Replace `{tenantId}` with your tenant GUID, which is available in the `tenantid` claim of your JWT.
+
+If you are building a custom dataplane integration or need to verify tokens server-side in your own infrastructure, use this endpoint to fetch the current public keys for your tenant.
