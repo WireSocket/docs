@@ -1,0 +1,81 @@
+---
+title: "Usage"
+description: "Get a real-time snapshot of your application's current resource consumption."
+---
+
+The Usage endpoint returns a live snapshot of your application's current concurrent connections and active documents across the entire WireSocket network. Use this to power admin dashboards, monitor limits, and trigger upgrade prompts before users hit hard limits.
+
+---
+
+## Endpoint
+```http
+GET https://{region}.ws.wiresocket.com/usage
+```
+
+---
+
+## Authentication
+
+Pass your JWT using one of the following:
+
+| Method | How |
+|---|---|
+| Authorization header (recommended) | `Authorization: Bearer YOUR_ACCESS_TOKEN` |
+| Query parameter | `?token=YOUR_ACCESS_TOKEN` |
+
+<Info>
+  The JWT identifies both the tenant and application. This endpoint is safe to call directly from the browser — users will only ever see their own application's data.
+</Info>
+
+---
+
+## Response
+```json
+{
+  "tenantId": "550e8400-e29b-41d4-a716-446655440000",
+  "appId": "770k8400-f29b-41d4-b716-556655449999",
+  "usage": {
+    "connections": {
+      "current": 82,
+      "limit": 100,
+      "percent": 82.0,
+      "status": "warning"
+    },
+    "documents": {
+      "current": 4,
+      "limit": 20,
+      "percent": 20.0,
+      "status": "healthy"
+    }
+  },
+  "timestamp": "2026-02-25T14:40:00.000Z"
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `usage.connections.current` | number | Total active WebSocket connections across all regions |
+| `usage.connections.limit` | number | Your plan's `maxConnections` value |
+| `usage.connections.percent` | number | Current usage as a percentage of limit |
+| `usage.connections.status` | string | `healthy` below 75%, `warning` 75–89%, `critical` 90% and above |
+| `usage.documents.current` | number | Total unique documents currently being synced |
+| `usage.documents.limit` | number | Your plan's `maxDocuments` value |
+| `timestamp` | string | UTC timestamp of the snapshot |
+
+---
+
+## Error Responses
+
+| Status | Description | What To Do |
+|---|---|---|
+| `401` | JWT is missing or invalid | Re-authenticate and retry with a fresh token |
+| `429` | Rate limit exceeded | Back off — this endpoint allows 12 requests per minute |
+| `503` | Node degraded or overloaded | Retry with backoff using the `Retry-After` header |
+
+---
+
+## Recommendations
+
+- Poll no more than **once per minute** for admin dashboards — the `STRICT` rate limit allows up to once every 5 seconds but once per minute is sufficient for most use cases
+- Use `percent` and `status` to drive progress bars or color-coded health indicators
+- Trigger an upgrade prompt when `status` reaches `warning` to prevent users hitting hard limits in production

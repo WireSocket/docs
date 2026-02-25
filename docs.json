@@ -44,18 +44,17 @@
         "tab": "API Reference",
         "groups": [
           {
-            "group": "API Documentation",
+            "group": "Overview",
             "pages": [
               "api-reference/introduction"
             ]
           },
           {
-            "group": "Endpoint Examples",
+            "group": "Endpoints",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api-reference/discovery",
+              "api-reference/websocket",
+              "api-reference/usage"
             ]
           }
         ]
@@ -65,7 +64,7 @@
       "anchors": [
         {
           "anchor": "Dashboard",
-          "href": "https://app.wiresocket.com",
+          "href": "https://dashboard.wiresocket.com",
           "icon": "gauge"
         },
         {
@@ -90,7 +89,7 @@
     "primary": {
       "type": "button",
       "label": "Dashboard",
-      "href": "https://app.wiresocket.com"
+      "href": "https://dashboard.wiresocket.com"
     }
   },
   "contextual": {
@@ -108,7 +107,7 @@
   "footer": {
     "socials": {
       "x": "https://x.com/wiresocket",
-      "github": "https://github.com/wiresocket",
+      "github": "https://github.com/WireSocket",
       "linkedin": "https://linkedin.com/company/wiresocket"
     }
   }

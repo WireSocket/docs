@@ -1,33 +1,39 @@
 ---
-title: 'Introduction'
-description: 'Example section for showcasing API endpoints'
+title: "API Reference"
+description: "WireSocket dataplane HTTP and WebSocket endpoints."
 ---
 
-<Note>
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
-</Note>
+The WireSocket dataplane exposes three endpoints for tenant applications. All endpoints are available in every deployed region.
 
-## Welcome
+## Base URL
+```
+https://{region}.ws.wiresocket.com
+```
 
-There are two ways to build API documentation: [OpenAPI](https://mintlify.com/docs/api-playground/openapi/setup) and [MDX components](https://mintlify.com/docs/api-playground/mdx/configuration). For the starter kit, we are using the following OpenAPI specification.
-
-<Card
-  title="Plant Store Endpoints"
-  icon="leaf"
-  href="https://github.com/mintlify/starter/blob/main/api-reference/openapi.json"
->
-  View the OpenAPI specification file
-</Card>
+Replace `{region}` with your target region (e.g. `eu`). Use the [Discovery API](/api-reference/discovery) to resolve the correct region for a document before connecting.
 
 ## Authentication
 
-All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
+All endpoints require a valid JWT access token issued by the WireSocket control plane. See [Authentication](/authentication) for how to obtain and refresh tokens.
 
-```json
-"security": [
-  {
-    "bearerAuth": []
-  }
-]
-```
+## Endpoints
+
+<CardGroup cols={1}>
+  <Card title="Discovery" icon="magnifying-glass" href="/api-reference/discovery">
+    Resolve the correct regional node for a document before connecting. Eliminates wrong-region handshakes and ensures lowest latency on first connect.
+  </Card>
+  <Card title="WebSocket Sync" icon="bolt" href="/api-reference/websocket">
+    The core WireSocket product. All Yjs document updates, awareness state, and heartbeats flow through this connection.
+  </Card>
+  <Card title="Usage" icon="chart-line" href="/api-reference/usage">
+    Get a real-time snapshot of your application's current concurrent connections and active documents across the global network.
+  </Card>
+</CardGroup>
+
+## Rate Limits
+
+All HTTP endpoints are rate limited per IP address. See [Rate Limits](/internals/rate-limits) for policy details per endpoint.
+
+## Status
+
+Live service status and incident history: [status.wiresocket.com](https://status.wiresocket.com)

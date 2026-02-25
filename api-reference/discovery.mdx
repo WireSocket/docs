@@ -1,0 +1,65 @@
+---
+title: "Discovery"
+description: "Resolve the correct regional node for a document before connecting."
+---
+
+Use the Discovery endpoint to find where a document is currently hosted before opening a WebSocket connection. This eliminates wrong-region handshake failures and ensures the lowest possible latency on first connect.
+
+See [Document Discovery](/core-concepts/dataplane#document-discovery) for full implementation guidance.
+
+---
+
+## Endpoint
+```http
+GET https://{region}.ws.wiresocket.com/discovery
+```
+
+Replace `{region}` with any available region (e.g. `eu`). The endpoint will return the correct node URL regardless of which region you call.
+
+---
+
+## Authentication
+
+Pass your JWT using one of the following:
+
+| Method | How |
+|---|---|
+| Authorization header (recommended) | `Authorization: Bearer YOUR_ACCESS_TOKEN` |
+| Query parameter | `?token=YOUR_ACCESS_TOKEN` |
+
+---
+
+## Query Parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `documentName` | string | Yes | The document ID to look up (unprefixed — do not include `tenantId::appId::`) |
+| `token` | string | No | JWT fallback if Authorization header cannot be set |
+
+---
+
+## Response
+```json
+{
+  "region": "aws-eu-west-1",
+  "url": "wss://eu.ws.wiresocket.com",
+  "isNew": false
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `region` | string | The region currently hosting this document |
+| `url` | string | The WebSocket node URL to connect to. Use this directly in your provider |
+| `isNew` | boolean | `true` if no active session exists — connect to your preferred region |
+
+---
+
+## Error Responses
+
+| Status | Description | What To Do |
+|---|---|---|
+| `400` | Missing `documentName` parameter | Add `documentName` to your query string |
+| `401` | JWT is missing or invalid | Re-authenticate and retry with a fresh token |
+| `429` | Rate limit exceeded | Back off and retry after 60 seconds |
+| `503` | Node is degraded or overloaded | Retry with backoff using the `Retry-After` header |

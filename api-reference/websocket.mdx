@@ -1,0 +1,69 @@
+---
+title: "WebSocket Sync"
+description: "Real-time Yjs document synchronization endpoint."
+---
+
+The WebSocket endpoint is the core WireSocket product. All Yjs document updates, awareness state (cursors, presence), and heartbeats flow through this connection.
+
+Always call the [Discovery API](/api-reference/discovery) first to resolve the correct regional URL before connecting.
+
+---
+
+## Endpoint
+```
+wss://{region}.ws.wiresocket.com
+```
+
+Use the `url` returned by the Discovery API as the endpoint — do not hardcode a regional URL.
+
+---
+
+## Authentication
+
+Pass your JWT using one of the following methods:
+
+| Method | How |
+|---|---|
+| WebSocket Subprotocol (recommended) | `protocols: ['Bearer', 'YOUR_ACCESS_TOKEN']` |
+| Query parameter | `wss://eu.ws.wiresocket.com?token=YOUR_ACCESS_TOKEN` |
+| Authorization header | `Authorization: Bearer YOUR_ACCESS_TOKEN` |
+
+The subprotocol method is preferred — it keeps the token out of server access logs and browser history.
+
+---
+
+## Connection
+```js
+import * as Y from 'yjs'
+import { WebsocketProvider } from 'y-websocket'
+
+const ydoc = new Y.Doc()
+
+// Use URL from Discovery API
+const provider = new WebsocketProvider(
+  'wss://eu.ws.wiresocket.com',
+  'your-document-id',
+  ydoc,
+  {
+    protocols: ['Bearer', 'YOUR_ACCESS_TOKEN']
+  }
+)
+```
+
+---
+
+## Close Codes
+
+| Code | Name | Description |
+|---|---|---|
+| `4001` | Missing Token | No JWT provided |
+| `4002` | Invalid Token | Token expired, malformed, or invalid signature |
+| `4003` | Forbidden | Token does not match tenant or application |
+| `4004` | Connection Limit | Application concurrent connection cap reached |
+| `4005` | Document Limit | Application concurrent document cap reached |
+| `4006` | Rate Limit | Operations per minute threshold exceeded |
+| `4007` | Invalid Name | Document name violates naming rules |
+| `4008` | Users Per Doc | Document concurrent user cap reached |
+| `4009` | Wrong Region | Document is active in another region — parse `REDIRECT:` from close reason |
+
+See [Error Reference](/reference/error-reference) for full details and recommended handling for each code.
