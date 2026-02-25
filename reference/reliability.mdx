@@ -1,0 +1,50 @@
+---
+title: "Reliability"
+description: "How WireSocket is built for resilience and where to check service status."
+---
+
+## Architecture
+
+WireSocket nodes are **stateless**. Each regional cluster runs multiple nodes backed by a single Redis instance in high-availability mode. Because all session state lives in Redis and not on individual nodes, any node in a region can serve any document in that region at any time.
+
+When a node becomes unhealthy, DNS load balancing automatically routes new connections to healthy nodes in the same cluster. This transition is invisible to your users — no client-side failover logic is required.
+
+---
+
+## Automatic Load Shedding
+
+WireSocket nodes continuously monitor memory, CPU load, and active connection count. When a node approaches its limits, it automatically removes itself from the DNS routing pool and stops accepting new connections.
+
+**What this means for your application:**
+
+- Existing active sessions are never dropped during a node health event
+- New connection attempts during a health event receive a `503` response with a `Retry-After` header
+- Once the node recovers, it re-enters the pool automatically
+
+Handle `503` on connection with a backoff retry:
+```js
+provider.ws.addEventListener('close', async (event) => {
+  if (event.code === 1011) {
+    // Node unavailable — retry after jittered delay
+    const retryAfter = 30 + Math.random() * 10
+    await sleep(retryAfter * 1000)
+    reconnect(nodeUrl, docId, token)
+  }
+})
+```
+
+---
+
+## SLA
+
+WireSocket does not publish an uptime SLA for standard plans. Enterprise plans include a contractual SLA. [Contact us](mailto:support@wiresocket.com) for Enterprise pricing.
+
+---
+
+## Status Page
+
+Live service status, incident history, and maintenance notices are available at:
+
+**[status.wiresocket.com](https://status.wiresocket.com)**
+
+Subscribe to status updates to receive notifications for incidents and planned maintenance windows.

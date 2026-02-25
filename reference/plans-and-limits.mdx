@@ -1,0 +1,76 @@
+---
+title: "Plans & Limits"
+description: "How WireSocket enforces plan limits and what your application receives when limits are hit."
+---
+
+Every WireSocket application has resource limits defined by its plan. These limits are embedded in your JWT and enforced by the dataplane at connection time — no database lookup required.
+
+---
+
+## Plan Limits
+
+| Limit | Description |
+|---|---|
+| `maxConnections` | Total concurrent WebSocket connections across your entire application |
+| `maxDocuments` | Total concurrent active documents across your entire application |
+| `maxUsersPerDoc` | Maximum concurrent users inside a single document session |
+| `opsPerMinute` | Maximum CRDT operations per minute |
+
+See the [Pricing page](https://wiresocket.com/pricing) for limit values per plan.
+
+---
+
+## Enforcement
+
+### When Limits Are Hit
+
+All connection limits are enforced at handshake. The connection is rejected before it is established — no active connections are dropped.
+
+| Limit | Close Code | Message | Enforcement Point |
+|---|---|---|---|
+| `maxConnections` | `4004` | `Connection limit exceeded: <LIMIT>` | Handshake |
+| `maxDocuments` | `4005` | `Document limit exceeded: <LIMIT> (active: <COUNT>)` | Document load |
+| `maxUsersPerDoc` | `4008` | `Document user limit exceeded: <LIMIT>` | Handshake |
+| `opsPerMinute` | `4006` | `Rate limit exceeded: <LIMIT> ops/min` | Active session |
+
+<Info>
+  `opsPerMinute` is the only limit that can be hit during an active session. When exceeded, the connection is dropped to protect sync integrity across all connected clients.
+</Info>
+
+### Enforcement Strategy
+
+**Global limits** — `maxConnections`, `maxDocuments`, and `maxUsersPerDoc` are enforced globally across the entire cluster. A tenant cannot bypass limits by spreading connections across multiple nodes.
+
+**Regional limits** — `opsPerMinute` is enforced via local Redis within the node's region. This allows millisecond-level rate checking without global database latency.
+
+---
+
+## Handling Limit Errors
+```js
+provider.ws.addEventListener('close', (event) => {
+  switch (event.code) {
+    case 4004:
+      // Total connection cap hit — show upgrade prompt
+      showUpgradePrompt('connection limit')
+      break
+    case 4005:
+      // Too many active documents — close unused sessions
+      showUpgradePrompt('document limit')
+      break
+    case 4008:
+      // Document is full — notify user
+      showError('This document is full. Maximum collaborators reached.')
+      break
+    case 4006:
+      // Ops rate limit — back off and retry
+      setTimeout(() => reconnect(nodeUrl, docId, token), 30000)
+      break
+  }
+})
+```
+
+---
+
+## Usage Visibility
+
+Current usage stats are visible in your [WireSocket Dashboard](https://app.wiresocket.com). Usage data is not currently available in dataplane response headers.

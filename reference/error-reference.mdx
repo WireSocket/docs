@@ -1,0 +1,46 @@
+---
+title: "Error Reference"
+description: "Complete reference for WireSocket WebSocket close codes and Control Plane HTTP errors."
+---
+
+## WebSocket Close Codes
+
+WireSocket uses the `4000–4999` private use range to provide specific, actionable feedback to your client on every failed connection.
+
+| Code | Name | Description | What To Do |
+|---|---|---|---|
+| `4001` | Missing Token | No JWT was provided in the handshake | Add the token via subprotocol, query parameter, or Auth header. See [Authentication](/authentication). |
+| `4002` | Invalid Token | Token is expired, malformed, or has an invalid signature | Refresh the token using your refresh token and reconnect. See [Token Renewal](/authentication#token-renewal). |
+| `4003` | Forbidden | Token does not match the tenant or application being accessed | Verify your `client_id` and `appId` are correct for this environment. |
+| `4004` | Connection Limit | Application has hit its total concurrent connection cap | Implement graceful degradation in your UI. Consider upgrading your plan. |
+| `4005` | Document Limit | Application has hit its total active document cap | Close unused document sessions. Consider upgrading your plan. |
+| `4006` | Rate Limit | Operations per minute threshold exceeded | Back off and reconnect after 30 seconds. Consider upgrading your plan. |
+| `4007` | Invalid Name | Document name violates naming rules | Use alphanumeric characters, hyphens, and underscores only. Max 255 characters. |
+| `4008` | Users Per Doc | Too many concurrent users on this document | Notify the user the document is full. Consider upgrading your plan. |
+| `4009` | Wrong Region | Document is active in another region | Parse the `REDIRECT:` URL from the close reason and reconnect. See [Dataplane](/core-concepts/dataplane#connect-and-catch). |
+
+---
+
+## Control Plane HTTP Errors
+
+Errors returned by `api.wiresocket.com` for token and management API requests.
+
+| Code | Description | What To Do |
+|---|---|---|
+| `400 Bad Request` | Missing or malformed request parameters | Check required fields — `grant_type`, `client_id`, `documentName`, etc. Do not retry automatically. |
+| `401 Unauthorized` | API key or token is missing or invalid | Verify your `client_id` and `client_secret`. Re-authenticate if needed. |
+| `403 Forbidden` | Your account lacks permission for this operation | Check your plan supports this feature. Contact support if unexpected. |
+| `429 Too Many Requests` | Control Plane management API rate limit hit | Back off and retry with exponential backoff. Do not hammer the endpoint. |
+| `503 Service Unavailable` | Control Plane is under maintenance | Use the dataplane directly with a cached JWT. Monitor [status.wiresocket.com](https://status.wiresocket.com) for updates. |
+
+---
+
+## Dataplane HTTP Errors
+
+Errors returned by `ws.wiresocket.com` for HTTP requests including the Discovery API.
+
+| Code | Description | What To Do |
+|---|---|---|
+| `400 Bad Request` | Missing `documentName` parameter | Ensure `documentName` is included in the query string. |
+| `401 Unauthorized` | JWT is missing or invalid | Re-authenticate and retry with a fresh token. |
+| `503 Service Unavailable` | Node is degraded or overloaded | Retry with backoff using the `Retry-After` header value. |
