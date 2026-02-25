@@ -103,6 +103,8 @@ async function resolveAndConnect(docId, getAccessToken) {
 </Warning>
 
 ### Connect and Catch
+
+If you prefer to skip the HTTP round trip entirely, connect directly to any regional node. If the region is wrong, WireSocket closes the connection with a `4009` code and the correct URL in the close reason — your client catches this and reconnects transparently.
 ```js
 async function connectWithFallback(docId, getAccessToken) {
   const token = await getAccessToken()
