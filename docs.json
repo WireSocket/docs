@@ -30,11 +30,11 @@
             ]
           },
           {
-            "group": "Reference",
+            "group": "Internals",
             "pages": [
-              "reference/plans-and-limits",
-              "reference/error-reference",
-              "reference/reliability"
+              "internals/plans-and-limits",
+              "internals/error-reference",
+              "internals/reliability"
             ]
           }
         ]
