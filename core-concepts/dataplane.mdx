@@ -30,56 +30,6 @@ Currently available WebSocket regions and their URLs are listed in your [dashboa
 
 ---
 
-## Document Pinning & Region Routing
-
-A document session exists in **exactly one WebSocket region** at a time — the region where the first client connected.
-
-**You are responsible for tracking which region a document is open in.** WireSocket does not provide a lookup API for this. Store the region alongside the document in your own database when a session starts.
-
-If a client connects to the wrong region, the node rejects the handshake and returns a redirect:
-
-| Field | Value |
-|---|---|
-| WebSocket Close Code | `4009` |
-| Close Reason | `REDIRECT:wss://<target-node-url>` |
-
-**Example:**
-
-A document is open in `us-west`. A client connects to `apac`. The APAC node closes the connection with:
-```
-Close Code: 4009
-Close Reason: REDIRECT:wss://us-west.ws.wiresocket.com
-```
-
-Parse the `REDIRECT:` prefix in your client to automatically reconnect to the correct node without showing an error to the user.
-
-**Fallback:** If the document is active in another region but no specific node URL is found, the close reason will be:
-```
-Document active in region: us-west
-```
-
-In this case, construct the regional URL yourself and retry.
-
----
-
-## Document ID Format
-
-Pass any string as your document ID. WireSocket handles isolation internally by prefixing it with `tenantId::appId::` before it reaches the storage layer.
-
-**Recommendations:**
-- Keep document IDs under **255 characters**
-- Use URL-safe characters — alphanumeric, hyphens, underscores
-- Avoid control characters or null bytes
-```js
-// Good
-'my-document-123'
-'user_notes_abc'
-
-// Avoid
-'doc with spaces'
-'doc/with/slashes'
-```
-
 ## Document Discovery
 
 Before opening a WebSocket connection, call the Discovery API to resolve the correct regional node for your document. This eliminates wrong-region handshakes and ensures the lowest possible latency on first connect.
@@ -101,7 +51,7 @@ Authorization: Bearer YOUR_ACCESS_TOKEN
 |---|---|
 | `region` | The region currently hosting this document |
 | `url` | The WebSocket node URL to connect to |
-| `isNew` | `true` if no active session exists — connect to your home region |
+| `isNew` | `true` if no active session exists — connect to your preferred region |
 
 ### Connection Workflow
 ```js
@@ -122,7 +72,7 @@ async function resolveAndConnect(docId, getAccessToken) {
   const { url, isNew } = await res.json()
 
   // Step 2: Resolve the node URL
-  // If isNew, no session exists yet — connect to your home region from JWT
+  // If isNew, no session exists yet — connect to your preferred region
   const nodeUrl = url ?? 'wss://eu.ws.wiresocket.com'
 
   // Step 3: Connect
@@ -144,6 +94,26 @@ async function resolveAndConnect(docId, getAccessToken) {
 <Warning>
   A `401` or `400` response means a configuration problem — invalid token or missing `documentName`. Do not retry automatically. Surface the error to the developer.
 </Warning>
+
+---
+
+## Document ID Format
+
+Pass any string as your document ID. WireSocket handles isolation internally by prefixing it with `tenantId::appId::` before it reaches the storage layer.
+
+**Recommendations:**
+- Keep document IDs under **255 characters**
+- Use URL-safe characters — alphanumeric, hyphens, underscores
+- Avoid control characters or null bytes
+```js
+// Good
+'my-document-123'
+'user_notes_abc'
+
+// Avoid
+'doc with spaces'
+'doc/with/slashes'
+```
 
 ---
 
@@ -224,18 +194,18 @@ JWT validation happens **at handshake only**. Once connected, an expiring token 
 When your token is close to expiry, reconnect with a fresh token:
 ```js
 async function connectWithFreshToken(docId, getAccessToken) {
-  const token = await getAccessToken() // fetch or refresh your token
+  const token = await getAccessToken()
 
-  const provider = new WebsocketProvider(
+  provider.destroy()
+
+  const newProvider = new WebsocketProvider(
     'wss://eu.ws.wiresocket.com',
     docId,
     ydoc,
-    {
-      protocols: ['Bearer', token]
-    }
+    { protocols: ['Bearer', token] }
   )
 
-  return provider
+  return newProvider
 }
 ```
 
@@ -249,16 +219,11 @@ async function connectWithFreshToken(docId, getAccessToken) {
 
 ## Handling Wrong-Region Errors
 
-Implement a close handler to catch `4009` and automatically reroute:
+If Discovery is not used and a client connects to the wrong region, the node rejects the handshake with `4009`. Handle this as a transparent fallback:
 ```js
 provider.ws.addEventListener('close', async (event) => {
   if (event.code === 4009 && event.reason.startsWith('REDIRECT:')) {
     const targetUrl = event.reason.replace('REDIRECT:', '')
-
-    // Update stored region for this document in your DB
-    await saveDocumentRegion(docId, targetUrl)
-
-    // Reconnect to correct region
     const token = await getAccessToken()
     reconnect(targetUrl, docId, token)
   }
