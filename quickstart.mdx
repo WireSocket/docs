@@ -13,10 +13,11 @@ Your tenant account is free. No credit card required to get started.
 
 ## 2. Create an OAuth 2 Application
 
-To connect to the WireSocket dataplane, a **JWT access token** is required. Tokens are issued through an **OAuth 2 Machine-to-Machine (M2M)** flow — to set this up, you first need to create an OAuth 2 app in the dashboard.
+To connect to the WireSocket dataplane, a **JWT access token** is required. Tokens are issued through an **OAuth 2 Machine-to-Machine (M2M)** flow — to set this up, first create an OAuth 2 app in the dashboard.
+
 <Steps>
   <Step title="Open the Apps section">
-    Navigate to **Apps** in the dashboard sidebar and click **Create App**.
+    Navigate to **Apps** in the dashboard sidebar and click **Add Application**.
   </Step>
   <Step title="Name your app">
     Give your app a name that identifies the product or service connecting to WireSocket (e.g. `my-editor-prod`).
@@ -27,11 +28,6 @@ To connect to the WireSocket dataplane, a **JWT access token** is required. Toke
     <Warning>
       The License Region cannot be changed after the app is created. Choose the region closest to your primary user base.
     </Warning>
-  </Step>
-  <Step title="Assign a plan">
-    Select a plan for this app. Your **first app is free**. All subsequent apps require a paid plan assigned at creation.
-
-    Your app cannot connect to the WireSocket dataplane until a plan is assigned.
   </Step>
   <Step title="Save your credentials">
     After creation, copy your **Client ID** and **Client Secret** immediately. The secret is shown only once.
@@ -44,7 +40,19 @@ To connect to the WireSocket dataplane, a **JWT access token** is required. Toke
 
 ---
 
-## 3. Get an Access Token
+## 3. Activate a Plan
+
+Your app cannot connect to the WireSocket dataplane until a plan is active.
+
+Open your app from the **Apps** list and go to the **Plans** tab. Your first app is on the **Free plan** automatically. For additional apps, subscribe to a paid plan to activate dataplane access.
+
+<Info>
+  The Free plan includes 40 concurrent connections, 10 documents, 3 users per document, and 500 operations per minute — enough to get started.
+</Info>
+
+---
+
+## 4. Get an Access Token
 
 Exchange your credentials for a JWT access token from your **backend server**.
 ```bash
@@ -52,7 +60,7 @@ curl -X POST https://api.wiresocket.com/connect/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=client_credentials" \
   -d "client_id=YOUR_CLIENT_ID" \
-  -d "client_secret=YOUR_CLIENT_SECRET"\
+  -d "client_secret=YOUR_CLIENT_SECRET" \
   -d "scope=WireSocket.API offline_access"
 ```
 
@@ -70,64 +78,60 @@ curl -X POST https://api.wiresocket.com/connect/token \
   Access tokens are valid for **15 minutes**. Use the `refresh_token` to obtain a new access token without re-authenticating. See [Token Renewal](/authentication) for implementation guidance.
 </Info>
 
-The JWT contains your app's plan details and license limits. The WireSocket dataplane reads these claims directly — no database lookup required.
+The JWT contains your app's plan limits. The WireSocket dataplane reads these claims directly — no database lookup required.
 
 ---
 
-## 4. Connect to the Dataplane
+## 5. Connect to the Dataplane
 
 Pass the access token when connecting your Yjs provider to the WireSocket dataplane. Two methods are supported:
 
 <Tabs>
+  <Tab title="WebSocket Subprotocol (Recommended)">
+```js
+import * as Y from 'yjs'
+import { WebsocketProvider } from 'y-websocket'
+
+const ydoc = new Y.Doc()
+
+const provider = new WebsocketProvider(
+  'wss://ws.wiresocket.com',
+  'your-document-id',
+  ydoc,
+  {
+    protocols: ['Bearer', 'YOUR_ACCESS_TOKEN']
+  }
+)
+```
+    Preferred — keeps the token out of server access logs and browser history.
+  </Tab>
   <Tab title="URL Parameter">
 ```js
-    import * as Y from 'yjs'
-    import { WebsocketProvider } from 'y-websocket'
+import * as Y from 'yjs'
+import { WebsocketProvider } from 'y-websocket'
 
-    const ydoc = new Y.Doc()
+const ydoc = new Y.Doc()
 
-    const provider = new WebsocketProvider(
-      'wss://ws.wiresocket.com?access_token=YOUR_ACCESS_TOKEN',
-      'your-document-id',
-      ydoc
-    )
-```
-  </Tab>
-  <Tab title="WebSocket Subprotocol">
-```js
-    import * as Y from 'yjs'
-    import { WebsocketProvider } from 'y-websocket'
-
-    const ydoc = new Y.Doc()
-
-    const provider = new WebsocketProvider(
-      'wss://ws.wiresocket.com',
-      'your-document-id',
-      ydoc,
-      {
-        WebSocketPolyfill: undefined,
-        protocols: ['Bearer', 'YOUR_ACCESS_TOKEN']
-      }
-    )
+const provider = new WebsocketProvider(
+  'wss://ws.wiresocket.com?access_token=YOUR_ACCESS_TOKEN',
+  'your-document-id',
+  ydoc
+)
 ```
   </Tab>
 </Tabs>
-
-<Info>
-  The subprotocol method is preferred for security as it keeps the token out of server access logs and browser history.
-</Info>
 
 ---
 
 ## You're Connected
 
-Your Yjs document is now syncing through WireSocket. Any changes made by connected clients are propagated in real-time within the document's region.
+Your Yjs document is now syncing through WireSocket. Any changes made by connected clients are propagated in real-time.
 
 <CardGroup cols={2}>
   <Card title="Token Renewal & Auth" icon="key-skeleton" href="/authentication">
     Implement refresh token rotation and keep connections alive beyond 15 minutes.
   </Card>
   <Card title="Dataplane & Editor Setup" icon="plug" href="/dataplane">
-    Handle regions, wrong-region errors, reconnection logic, and editor integration.
+    Handle regions, reconnection logic, and editor integration.
   </Card>
 </CardGroup>
