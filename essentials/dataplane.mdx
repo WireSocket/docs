@@ -1,0 +1,215 @@
+---
+title: "Dataplane & Editor Setup"
+description: "Connect your editor to the WireSocket dataplane, handle regions, and manage reconnection."
+---
+
+The WireSocket dataplane is a globally distributed set of WebSocket nodes. This page covers how to connect your editor, handle regions, and manage token renewal and reconnection.
+
+---
+
+## Regions
+
+WireSocket has two region concepts you need to understand:
+
+**License Region** — Set during app creation. Defines where your app's license and plan data is stored. This is the `licenseRegionCode` claim in your JWT. Currently available:
+
+| Code | Location |
+|---|---|
+| `aws-eu-west-1` | Europe (Ireland) |
+
+**WebSocket Regions** — Where your editors connect for real-time sync. Each region has its own URL:
+```
+wss://<region>.ws.wiresocket.com
+```
+
+Currently available WebSocket regions and their URLs are listed in your [dashboard](https://app.wiresocket.com). More regions (US, APAC) are coming soon.
+
+<Info>
+  License Region and WebSocket region are independent. Your license can be stored in EU while your editors connect to a US node.
+</Info>
+
+---
+
+## Document Pinning & Region Routing
+
+A document session exists in **exactly one WebSocket region** at a time — the region where the first client connected.
+
+**You are responsible for tracking which region a document is open in.** WireSocket does not provide a lookup API for this. Store the region alongside the document in your own database when a session starts.
+
+If a client connects to the wrong region, the node rejects the handshake and returns a redirect:
+
+| Field | Value |
+|---|---|
+| WebSocket Close Code | `4009` |
+| Close Reason | `REDIRECT:wss://<target-node-url>` |
+
+**Example:**
+
+A document is open in `us-west`. A client connects to `apac`. The APAC node closes the connection with:
+```
+Close Code: 4009
+Close Reason: REDIRECT:wss://us-west.ws.wiresocket.com
+```
+
+Parse the `REDIRECT:` prefix in your client to automatically reconnect to the correct node without showing an error to the user.
+
+**Fallback:** If the document is active in another region but no specific node URL is found, the close reason will be:
+```
+Document active in region: us-west
+```
+
+In this case, construct the regional URL yourself and retry.
+
+---
+
+## Document ID Format
+
+Pass any string as your document ID. WireSocket handles isolation internally by prefixing it with `tenantId::appId::` before it reaches the storage layer.
+
+**Recommendations:**
+- Keep document IDs under **255 characters**
+- Use URL-safe characters — alphanumeric, hyphens, underscores
+- Avoid control characters or null bytes
+```js
+// Good
+'my-document-123'
+'user_notes_abc'
+
+// Avoid
+'doc with spaces'
+'doc/with/slashes'
+```
+
+---
+
+## Connecting Your Editor
+
+### TipTap
+```js
+import * as Y from 'yjs'
+import { WebsocketProvider } from 'y-websocket'
+import { Editor } from '@tiptap/core'
+import Collaboration from '@tiptap/extension-collaboration'
+import CollaborationCursor from '@tiptap/extension-collaboration-cursor'
+
+const ydoc = new Y.Doc()
+
+const provider = new WebsocketProvider(
+  'wss://eu.ws.wiresocket.com',
+  'your-document-id',
+  ydoc,
+  {
+    protocols: ['Bearer', 'YOUR_ACCESS_TOKEN']
+  }
+)
+
+const editor = new Editor({
+  extensions: [
+    Collaboration.configure({ document: ydoc }),
+    CollaborationCursor.configure({ provider }),
+  ],
+})
+```
+
+### y-websocket (framework agnostic)
+```js
+import * as Y from 'yjs'
+import { WebsocketProvider } from 'y-websocket'
+
+const ydoc = new Y.Doc()
+
+const provider = new WebsocketProvider(
+  'wss://eu.ws.wiresocket.com',
+  'your-document-id',
+  ydoc,
+  {
+    protocols: ['Bearer', 'YOUR_ACCESS_TOKEN']
+  }
+)
+
+provider.on('status', event => {
+  console.log('Connection status:', event.status)
+})
+```
+
+---
+
+## Passing the Token
+
+Three methods are supported. All work in all regions.
+
+| Method | How |
+|---|---|
+| WebSocket Subprotocol (recommended) | `protocols: ['Bearer', 'YOUR_ACCESS_TOKEN']` |
+| Query Parameter | `wss://eu.ws.wiresocket.com?token=YOUR_ACCESS_TOKEN` |
+| Auth Header | `Authorization: Bearer YOUR_ACCESS_TOKEN` |
+
+The subprotocol method is preferred — it keeps the token out of server access logs and browser history.
+
+<Warning>
+  The `Origin` header is validated against the `allowed_domains` in your JWT at handshake time. Connections from unlisted domains are rejected before the handshake completes.
+</Warning>
+
+---
+
+## Token Expiry & Reconnection
+
+JWT validation happens **at handshake only**. Once connected, an expiring token does not drop an active session. This prevents disruption during live collaboration.
+
+When your token is close to expiry, reconnect with a fresh token:
+```js
+async function connectWithFreshToken(docId, getAccessToken) {
+  const token = await getAccessToken() // fetch or refresh your token
+
+  const provider = new WebsocketProvider(
+    'wss://eu.ws.wiresocket.com',
+    docId,
+    ydoc,
+    {
+      protocols: ['Bearer', token]
+    }
+  )
+
+  return provider
+}
+```
+
+<Info>
+  Reconnecting re-validates the JWT against the JWKS endpoint and re-reads plan limits from the token claims. This is the correct way to pick up plan changes or credential rotations.
+</Info>
+
+**Recommendation:** Set a proactive reconnect timer slightly before token expiry to avoid gaps. For example, reconnect at 13 minutes if your token expires at 15.
+
+---
+
+## Handling Wrong-Region Errors
+
+Implement a close handler to catch `4009` and automatically reroute:
+```js
+provider.ws.addEventListener('close', async (event) => {
+  if (event.code === 4009 && event.reason.startsWith('REDIRECT:')) {
+    const targetUrl = event.reason.replace('REDIRECT:', '')
+
+    // Update stored region for this document in your DB
+    await saveDocumentRegion(docId, targetUrl)
+
+    // Reconnect to correct region
+    const token = await getAccessToken()
+    reconnect(targetUrl, docId, token)
+  }
+})
+```
+
+---
+
+## Connection Limits
+
+Limits are enforced at handshake. If a limit is reached, the connection is rejected before it is established — no active connections are dropped.
+
+| Limit | Enforcement |
+|---|---|
+| `maxConnections` | Rejected at handshake if global count is at cap |
+| `maxUsersPerDoc` | Rejected at handshake if document user count is at cap |
+| `opsPerMinute` | Rate limited during active session |
+
+When a connection is rejected due to limits, handle it gracefully in your editor UI and surface a meaningful message to the user.

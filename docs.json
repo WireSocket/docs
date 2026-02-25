@@ -23,10 +23,11 @@
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Concept",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+            "dataplane",
+            "document-lifecycle",
+            "regions"
             ]
           },
           {
