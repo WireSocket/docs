@@ -13,7 +13,7 @@ WireSocket has two distinct region concepts. Understanding the difference is imp
 |---|---|---|
 | **Purpose** | Where your app's license and plan data is stored | Where your editors connect for real-time sync |
 | **Set when** | App creation — cannot be changed | Per document, at first connection |
-| **Claim** | `licenseRegionCode` in JWT | Not in JWT — tracked by you |
+| **Claim** | `licenseRegionCode` in JWT | Not in JWT — tracked by Discovery API |
 | **Affects** | Billing, limits, token issuance | Latency, document pinning |
 
 These are independent. Your license can be stored in EU while your users sync through a US node.
@@ -44,55 +44,80 @@ Current region URLs are also listed in your [dashboard](https://app.wiresocket.c
 
 ---
 
-## Choosing a Region
+## Regional Routing
 
-WireSocket does not automatically route clients to the optimal region. **You choose the region** and store it alongside the document in your database.
+WireSocket uses a smart steering architecture. Documents are automatically pinned to the first region that opens them. The Discovery API handles locating documents across regions — you do not need to track this manually in your own database.
 
-The goal is to pick the region **closest to the majority of your collaborators** for that document. A team working from Europe should use the EU node. A team in the US should use the US node once available.
+| Approach | How |
+|---|---|
+| **Proactive** | Call `/discovery` before connecting — get the correct node on the first try |
+| **Reactive** | Connect directly — if wrong region, server returns `4009 REDIRECT` with the correct URL |
 
-A common pattern is to encode the region in your document share URL:
-```js
-// When creating a document, pick the region and store it
-const region = 'eu' // your logic to pick based on user location
-const docUrl = `https://yourapp.com/doc/${docId}?region=${region}`
+The proactive approach via Discovery is strongly recommended. It avoids unnecessary handshakes and delivers the lowest possible latency on first connect.
 
-// When opening a document from a share link
-const params = new URLSearchParams(window.location.search)
-const region = params.get('region') ?? 'eu' // default to EU
-const wsUrl = `wss://${region}.ws.wiresocket.com`
+### Discovery Endpoint
+```http
+GET https://ws.wiresocket.com/discovery?documentName=your-doc-id
+Authorization: Bearer YOUR_ACCESS_TOKEN
 ```
 
-This ensures all collaborators on a shared document connect to the same region automatically.
+| Environment | Endpoint |
+|---|---|
+| Production | `https://ws.wiresocket.com/discovery` |
+| Local development | `http://localhost:1234/discovery` |
+
+See [Dataplane](/core-concepts/dataplane) for the full discovery and connection workflow including response handling and fallback logic.
 
 ---
 
 ## Document Pinning
 
-Once a document session starts in a region, it is **pinned to that region** for the lifetime of the session.
+Once a document session starts in a region, it is **pinned to that region** for the lifetime of the session. No other region can serve that document while the session is active.
 
-If a client attempts to connect to a different region for an active document, the connection is rejected with:
+When the last client disconnects, a 10-second grace period begins. If no client reconnects within that window, the document is unpinned and the next connection can pin it to any region.
+
+<Warning>
+  If consistent region routing matters to your application, store the document's region in your own database. Use the Discovery API on each open to confirm the correct node rather than assuming the region is unchanged.
+</Warning>
+
+### Reactive Fallback
+
+If a client connects to the wrong region directly without using Discovery, the node rejects the handshake:
 ```
 Close Code: 4009
 Close Reason: REDIRECT:wss://<correct-node-url>
 ```
 
-Handle this in your client to transparently reroute:
+Handle this in your client as a transparent fallback:
 ```js
 provider.ws.addEventListener('close', async (event) => {
   if (event.code === 4009 && event.reason.startsWith('REDIRECT:')) {
     const correctUrl = event.reason.replace('REDIRECT:', '')
-
-    // Save the correct region to your DB
-    await updateDocumentRegion(docId, correctUrl)
-
-    // Reconnect to correct region
     const token = await getAccessToken()
     reconnect(correctUrl, docId, token)
   }
 })
 ```
 
-See [Dataplane & Editor Setup](/core-concepts/dataplane) for the full reconnection implementation.
+---
+
+## Choosing a Region for New Documents
+
+When `isNew: true` is returned by the Discovery API, the document has no active session and can be pinned to any region. Connect to the region closest to your user or their team.
+
+Multi-region deployments are designed to reduce latency for geographically distributed teams. Pick the region where the **majority of collaborators** on a document are located, not just the document creator.
+```js
+// Example: pick region based on user's locale
+function getPreferredRegion(userLocale) {
+  if (userLocale.startsWith('en-US') || userLocale.startsWith('es')) {
+    return 'wss://us.ws.wiresocket.com' // US once available
+  }
+  if (userLocale.startsWith('ja') || userLocale.startsWith('zh')) {
+    return 'wss://apac.ws.wiresocket.com' // APAC once available
+  }
+  return 'wss://eu.ws.wiresocket.com' // default to EU
+}
+```
 
 ---
 
@@ -100,4 +125,4 @@ See [Dataplane & Editor Setup](/core-concepts/dataplane) for the full reconnecti
 
 Keeping a document pinned to a single region avoids the complexity and cost of cross-region CRDT merging. Latency within a region is predictable and fast. Cross-region sync introduces coordination overhead that is difficult to reason about and expensive to operate reliably.
 
-If your users are globally distributed, the recommended approach is to pick the region closest to the **document owner** or **primary author**, not the region of every collaborator.
+If your users are globally distributed, pick the region closest to the **document owner** or **primary author**, not the region of every individual collaborator.

@@ -80,6 +80,71 @@ Pass any string as your document ID. WireSocket handles isolation internally by 
 'doc/with/slashes'
 ```
 
+## Document Discovery
+
+Before opening a WebSocket connection, call the Discovery API to resolve the correct regional node for your document. This eliminates wrong-region handshakes and ensures the lowest possible latency on first connect.
+```http
+GET https://ws.wiresocket.com/discovery?documentName=your-document-id
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+**Response:**
+```json
+{
+  "region": "aws-eu-west-1",
+  "url": "wss://eu.ws.wiresocket.com",
+  "isNew": false
+}
+```
+
+| Field | Description |
+|---|---|
+| `region` | The region currently hosting this document |
+| `url` | The WebSocket node URL to connect to |
+| `isNew` | `true` if no active session exists — connect to your home region |
+
+### Connection Workflow
+```js
+async function resolveAndConnect(docId, getAccessToken) {
+  const token = await getAccessToken()
+
+  // Step 1: Discover the correct node
+  const res = await fetch(
+    `https://ws.wiresocket.com/discovery?documentName=${docId}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  )
+
+  if (!res.ok) {
+    // 401 = invalid token, 400 = bad request — stop and check config
+    throw new Error(`Discovery failed: ${res.status}`)
+  }
+
+  const { url, isNew } = await res.json()
+
+  // Step 2: Resolve the node URL
+  // If isNew, no session exists yet — connect to your home region from JWT
+  const nodeUrl = url ?? 'wss://eu.ws.wiresocket.com'
+
+  // Step 3: Connect
+  const provider = new WebsocketProvider(
+    nodeUrl,
+    docId,
+    ydoc,
+    { protocols: ['Bearer', token] }
+  )
+
+  return provider
+}
+```
+
+<Info>
+  If `url` is `null`, the document's region is known but no nodes in that region have sent a heartbeat in the last 2 minutes. Fall back to your default regional URL and retry.
+</Info>
+
+<Warning>
+  A `401` or `400` response means a configuration problem — invalid token or missing `documentName`. Do not retry automatically. Surface the error to the developer.
+</Warning>
+
 ---
 
 ## Connecting Your Editor
