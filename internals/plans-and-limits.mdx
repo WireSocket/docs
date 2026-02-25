@@ -4,7 +4,9 @@ description: "How WireSocket enforces plan limits and what your application rece
 ---
 
 Every WireSocket application has resource limits defined by its plan. These limits are embedded in your JWT and enforced by the dataplane at connection time — no database lookup required.
-
+<Info>
+  WireSocket limits apply to **concurrent usage only** — not total storage or document count. You can have unlimited documents in your system. Limits only apply to how many are actively open and syncing at the same time.
+</Info>
 ---
 
 ## Plan Limits
