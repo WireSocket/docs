@@ -25,9 +25,9 @@
           {
             "group": "Core Concept",
             "pages": [
-            "dataplane",
-            "document-lifecycle",
-            "regions"
+            "core-concepts/dataplane",
+            "core-concepts/document-lifecycle",
+            "core-concepts/regions"
             ]
           },
           {

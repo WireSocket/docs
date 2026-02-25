@@ -1,0 +1,118 @@
+---
+title: "Document Lifecycle"
+description: "How WireSocket creates, maintains, and cleans up document sessions."
+---
+
+Understanding the document lifecycle helps you build reliable save logic and handle edge cases like disconnects, page refreshes, and reconnections correctly.
+
+---
+
+## Session Creation
+
+When the **first client connects** to a document, the session is created immediately. WireSocket:
+
+1. Prefixes the document name with `tenantId::appId::` for tenant isolation
+2. Checks the tenant's current document count against the `maxDocuments` limit
+3. Initializes the Yjs document state in the Redis sync layer
+4. Registers the document in the routing table, pinning it to the current region
+
+There is no lazy initialization — the session is fully created at the moment of first connection.
+
+---
+
+## State Synchronization
+
+WireSocket uses a **continuous state-sync model**. Every CRDT update from any connected client is streamed to the server and written to Redis in real-time.
+
+There is no `save()` call. There is no manual flush. As long as an update reaches the server, it is safe in the Redis sync layer.
+
+If you need to persist the final Yjs state to your own database (Postgres, S3, etc.), implement this in your application using Yjs update events:
+```js
+ydoc.on('update', (update, origin) => {
+  // Encode and send to your backend
+  const state = Y.encodeStateAsUpdate(ydoc)
+  saveToYourDatabase(docId, state)
+})
+```
+
+<Info>
+  WireSocket does not persist documents. Redis holds the collaboration state for the lifetime of the session only. Archiving to permanent storage is your responsibility.
+</Info>
+
+---
+
+## Disconnect & Cleanup
+
+WireSocket uses a hybrid cleanup strategy when clients disconnect.
+
+### Single Client Disconnect
+
+When a client disconnects, their connection is removed from the `active_sessions` registry immediately. Other connected clients are unaffected.
+
+### Last Client Disconnect
+
+When the **last client** disconnects from a document:
+
+1. A **10-second grace period** begins
+2. If a new client connects within 10 seconds, the session continues uninterrupted — this handles page refreshes and brief network drops cleanly
+3. If no client reconnects within 10 seconds, the `document_routing` table entry is purged from Turso, unpinning the document from the region
+4. The server-side in-memory Yjs instance is garbage collected shortly after
+
+<Warning>
+  Once the routing entry is purged, the document is no longer pinned to a region. The next client to connect will pin it to whichever region they connect to — which may be a different region. Store the document's region in your own database if consistent routing matters to your application.
+</Warning>
+
+---
+
+## Unsynced Operations on Disconnect
+
+If a client disconnects mid-edit:
+
+- Operations that **reached the server** before disconnect are safe in Redis
+- Operations that were **blocked by the network failure** are buffered locally by the Yjs provider
+- When the client reconnects, pending local updates are **automatically synced** to the server
+
+No data is lost as long as the client eventually reconnects and the session grace period has not expired.
+
+---
+
+## Reconnection & Page Refreshes
+
+The 10-second grace period is designed to handle normal browser events like page refreshes and brief network interruptions without destroying the session.
+
+For intentional reconnections (e.g. token renewal), reconnect before the grace period expires to maintain session continuity:
+```js
+// Destroy existing provider cleanly before reconnecting
+provider.destroy()
+
+// Reconnect with fresh token
+const token = await getAccessToken()
+const newProvider = new WebsocketProvider(
+  'wss://eu.ws.wiresocket.com',
+  docId,
+  ydoc,
+  { protocols: ['Bearer', token] }
+)
+```
+
+---
+
+## Lifecycle Summary
+```
+First client connects
+        ↓
+Session created — Redis initialized, region pinned
+        ↓
+Clients sync in real-time via CRDT
+        ↓
+Client disconnects
+        ↓
+Still active clients? → Session continues
+        ↓
+Last client disconnects
+        ↓
+10-second grace period
+        ↓
+No reconnect? → Routing entry purged, session ends
+New client connects? → Session continues
+```

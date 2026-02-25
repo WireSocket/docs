@@ -1,0 +1,103 @@
+---
+title: "Regions"
+description: "How WireSocket regions work and how to route your users to the right node."
+---
+
+WireSocket has two distinct region concepts. Understanding the difference is important for setting up your app correctly.
+
+---
+
+## License Region vs WebSocket Region
+
+| | License Region | WebSocket Region |
+|---|---|---|
+| **Purpose** | Where your app's license and plan data is stored | Where your editors connect for real-time sync |
+| **Set when** | App creation — cannot be changed | Per document, at first connection |
+| **Claim** | `licenseRegionCode` in JWT | Not in JWT — tracked by you |
+| **Affects** | Billing, limits, token issuance | Latency, document pinning |
+
+These are independent. Your license can be stored in EU while your users sync through a US node.
+
+---
+
+## Available Regions
+
+### License Regions
+
+| Code | Location |
+|---|---|
+| `aws-eu-west-1` | Europe (Ireland) |
+
+### WebSocket Regions
+
+| Region | URL | Status |
+|---|---|---|
+| Europe | `wss://eu.ws.wiresocket.com` | ✅ Live |
+| United States | `wss://us.ws.wiresocket.com` | 🔜 Coming soon |
+| Asia Pacific | `wss://apac.ws.wiresocket.com` | 🔜 Coming soon |
+
+Current region URLs are also listed in your [dashboard](https://app.wiresocket.com).
+
+<Info>
+  A programmatic regions API is planned for after the v1 beta release. Until then, region URLs are available in the dashboard and this documentation.
+</Info>
+
+---
+
+## Choosing a Region
+
+WireSocket does not automatically route clients to the optimal region. **You choose the region** and store it alongside the document in your database.
+
+The goal is to pick the region **closest to the majority of your collaborators** for that document. A team working from Europe should use the EU node. A team in the US should use the US node once available.
+
+A common pattern is to encode the region in your document share URL:
+```js
+// When creating a document, pick the region and store it
+const region = 'eu' // your logic to pick based on user location
+const docUrl = `https://yourapp.com/doc/${docId}?region=${region}`
+
+// When opening a document from a share link
+const params = new URLSearchParams(window.location.search)
+const region = params.get('region') ?? 'eu' // default to EU
+const wsUrl = `wss://${region}.ws.wiresocket.com`
+```
+
+This ensures all collaborators on a shared document connect to the same region automatically.
+
+---
+
+## Document Pinning
+
+Once a document session starts in a region, it is **pinned to that region** for the lifetime of the session.
+
+If a client attempts to connect to a different region for an active document, the connection is rejected with:
+```
+Close Code: 4009
+Close Reason: REDIRECT:wss://<correct-node-url>
+```
+
+Handle this in your client to transparently reroute:
+```js
+provider.ws.addEventListener('close', async (event) => {
+  if (event.code === 4009 && event.reason.startsWith('REDIRECT:')) {
+    const correctUrl = event.reason.replace('REDIRECT:', '')
+
+    // Save the correct region to your DB
+    await updateDocumentRegion(docId, correctUrl)
+
+    // Reconnect to correct region
+    const token = await getAccessToken()
+    reconnect(correctUrl, docId, token)
+  }
+})
+```
+
+See [Dataplane & Editor Setup](/core-concepts/dataplane) for the full reconnection implementation.
+
+---
+
+## Why One Region Per Document?
+
+Keeping a document pinned to a single region avoids the complexity and cost of cross-region CRDT merging. Latency within a region is predictable and fast. Cross-region sync introduces coordination overhead that is difficult to reason about and expensive to operate reliably.
+
+If your users are globally distributed, the recommended approach is to pick the region closest to the **document owner** or **primary author**, not the region of every collaborator.
