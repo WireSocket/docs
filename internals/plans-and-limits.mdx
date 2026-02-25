@@ -75,4 +75,55 @@ provider.ws.addEventListener('close', (event) => {
 
 ## Usage Visibility
 
-Current usage stats are visible in your [WireSocket Dashboard](https://app.wiresocket.com). Usage data is not currently available in dataplane response headers.
+WireSocket does not provide usage metrics in the dashboard. Since usage is ephemeral and real-time, a static dashboard view would be outdated the moment it loaded. Instead, tenants can query the Usage API directly using their JWT to get a live snapshot of current consumption.
+
+### Usage API
+```http
+GET https://ws.wiresocket.com/usage
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+Or using a query parameter:
+```http
+GET https://ws.wiresocket.com/usage?token=YOUR_ACCESS_TOKEN
+```
+
+**Response:**
+```json
+{
+  "tenantId": "550e8400-e29b-41d4-a716-446655440000",
+  "appId": "770k8400-f29b-41d4-b716-556655449999",
+  "usage": {
+    "connections": {
+      "current": 82,
+      "limit": 100,
+      "percent": 82.0,
+      "status": "warning"
+    },
+    "documents": {
+      "current": 4,
+      "limit": 20,
+      "percent": 20.0,
+      "status": "healthy"
+    }
+  },
+  "timestamp": "2026-02-25T14:40:00.000Z"
+}
+```
+
+| Field | Description |
+|---|---|
+| `usage.connections.current` | Total active WebSocket connections across all regions |
+| `usage.documents.current` | Total unique documents currently being synced |
+| `status` | `healthy` below 75%, `warning` between 75–89%, `critical` at 90% or above |
+| `timestamp` | UTC time of the snapshot |
+
+<Info>
+  The JWT identifies the tenant and application — users can safely call this endpoint directly from the browser. They will only ever see their own application's data.
+</Info>
+
+### Recommended Usage
+
+- Poll once per minute for admin dashboards
+- Use `percent` and `status` fields to drive progress bars or color-coded indicators
+- Trigger an upgrade prompt when `status` reaches `warning` to prevent users hitting hard limits in production
