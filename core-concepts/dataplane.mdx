@@ -33,6 +33,15 @@ Currently available WebSocket regions and their URLs are listed in your [dashboa
 ## Document Discovery
 
 Before opening a WebSocket connection, call the Discovery API to resolve the correct regional node for your document. This eliminates wrong-region handshakes and ensures the lowest possible latency on first connect.
+
+WireSocket supports two connection strategies:
+
+| Strategy | How | Best For |
+|---|---|---|
+| **Discovery first** | Call `/discovery`, then connect to returned URL | Lowest latency, zero wrong-region attempts |
+| **Connect and catch** | Connect directly, handle `4009 REDIRECT` on error | Fewer HTTP requests, simpler client code |
+
+Both are fully supported. Use Discovery if first-connect latency matters. Use connect-and-catch if you want to avoid the extra HTTP round trip.
 ```http
 GET https://ws.wiresocket.com/discovery?documentName=your-document-id
 Authorization: Bearer YOUR_ACCESS_TOKEN
