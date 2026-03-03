@@ -5,13 +5,16 @@ description: "WireSocket dataplane HTTP and WebSocket endpoints."
 
 The WireSocket dataplane exposes three endpoints for tenant applications. All endpoints are available in every deployed region.
 
-## Base URL
+## Base URLs
 
-```
-https://{region-code}.wiresocket.net
-```
+WireSocket uses two different protocols depending on the endpoint type:
 
-Replace `{region-code}` with any available node region (e.g. `eu-central-1`). Any regional node can look up document locations in our global registry and return the correct destination.
+| Type            | Protocol   | Base URL                               |
+| :-------------- | :--------- | :------------------------------------- |
+| **HTTP (JSON)** | `https://` | `https://{region-code}.wiresocket.net` |
+| **WebSocket**   | `wss://`   | `wss://{region-code}.wiresocket.net`   |
+
+Replace `{region-code}` with any available node cluster (e.g., `eu-central-1`).
 
 ## Authentication
 

@@ -1,0 +1,179 @@
+---
+title: "Editor Setup"
+description: "Connect any Y.js-based editor or application to WireSocket using the Hocuspocus provider."
+---
+
+WireSocket is compatible with any application that uses **Y.js** for state management. While you can use the standard `y-websocket` provider, we recommend the **[@hocuspocus/provider](https://tiptap.dev/hocuspocus/api/introduction)** for robust synchronization, awareness (user presence), and easy integration with modern frameworks.
+
+<Info>
+  **Editor-Agnostic**: HocuspocusProvider is not tied to any specific editor. It
+  manages `Y.Doc` instances directly, meaning it works with Tiptap, BlockSuite,
+  Milkdown, or even custom canvas and form-based applications.
+</Info>
+
+---
+
+## Installation
+
+Install the provider and the core Y.js library:
+
+```bash
+npm install @hocuspocus/provider yjs
+```
+
+---
+
+## Basic Setup
+
+Connecting involves two steps: creating a dedicated WebSocket manager and then initializing a provider for your specific document.
+
+### 1. Initialize WebSocket Provider
+
+The `HocuspocusProviderWebsocket` manages the underlying connection to a WireSocket node.
+
+```js
+import { HocuspocusProviderWebsocket } from "@hocuspocus/provider";
+
+const socket = new HocuspocusProviderWebsocket({
+  // Use the URL resolved via Discovery API
+  url: "wss://eu-central-1.wiresocket.net",
+});
+```
+
+### 2. Configure HocuspocusProvider
+
+The provider handles document-specific synchronization and awareness.
+
+```js
+import { HocuspocusProvider } from "@hocuspocus/provider";
+import * as Y from "yjs";
+
+const ydoc = new Y.Doc();
+
+const provider = new HocuspocusProvider({
+  websocketProvider: socket,
+  name: "my-document-id",
+  document: ydoc,
+
+  // Use the access_token sub-protocol for authentication
+  token: "YOUR_JWT_TOKEN",
+
+  // Lifecycle Callbacks
+  onAuthenticated: () => console.log("Authenticated with WireSocket!"),
+  onSynced: () => console.log("Content is up to date."),
+});
+```
+
+---
+
+## Authentication Patterns
+
+WireSocket recommends passing your JWT via the **WebSocket sub-protocol** to keep tokens out of server logs and browser history.
+
+### Method 1: Sub-protocol (Recommended)
+
+When initializing the `HocuspocusProviderWebsocket`, you can define custom parameters for the handshake.
+
+```js
+const socket = new HocuspocusProviderWebsocket({
+  url: "wss://eu-central-1.wiresocket.net",
+  // Pass the token as a sub-protocol
+  parameters: {
+    protocols: ["access_token", "YOUR_JWT"],
+  },
+});
+```
+
+### Method 2: Query Parameter
+
+Alternatively, pass the token directly in the connection URL:
+
+```js
+const socket = new HocuspocusProviderWebsocket({
+  url: "wss://eu-central-1.wiresocket.net?token=YOUR_JWT",
+});
+```
+
+---
+
+## Awareness (User Presence)
+
+Tracking cursors, user names, and colors is built into the provider. Awareness data is ephemeral and synchronized in real-time.
+
+```js
+// Set local user state
+provider.setAwarenessField("user", {
+  name: "Jane Doe",
+  color: "#ffcc00",
+});
+
+// Listen for remote changes
+provider.awareness.on("change", () => {
+  console.log("Current active users:", provider.awareness.getStates());
+});
+```
+
+---
+
+## Editor Integrations
+
+### Tiptap (Example)
+
+For Tiptap, simply pass the `ydoc` from your provider to the Collaboration extension.
+
+```js
+import { Editor } from "@tiptap/core";
+import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
+
+const editor = new Editor({
+  extensions: [
+    Collaboration.configure({
+      document: provider.document,
+    }),
+    CollaborationCursor.configure({
+      provider: provider,
+    }),
+  ],
+});
+```
+
+### React Pattern
+
+When using React, ensure you manage the provider lifecycle to prevent memory leaks and duplicate connections.
+
+```jsx
+useEffect(() => {
+  const provider = new HocuspocusProvider({
+    websocketProvider: socket,
+    name: docId,
+    token: jwt,
+  });
+
+  return () => {
+    provider.destroy();
+  };
+}, [socket, docId, jwt]);
+```
+
+---
+
+## Advanced: Connection Pooling
+
+You can share a single WebSocket connection across multiple documents by using the same `websocketProvider` instance for multiple `HocuspocusProvider` calls.
+
+```js
+const sharedSocket = new HocuspocusProviderWebsocket({
+  url: "wss://eu-central-1.wiresocket.net",
+});
+
+const docA = new HocuspocusProvider({
+  websocketProvider: sharedSocket,
+  name: "document-a",
+});
+
+const docB = new HocuspocusProvider({
+  websocketProvider: sharedSocket,
+  name: "document-b",
+});
+```
