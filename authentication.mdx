@@ -10,6 +10,7 @@ WireSocket uses **OAuth 2 Machine-to-Machine (M2M) client credentials flow** to 
 ## Obtaining a Token
 
 Call the token endpoint from your **backend server only**. Never expose your `client_secret` in browser or mobile code.
+
 ```bash
 curl -X POST https://api.wiresocket.com/connect/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
@@ -20,6 +21,7 @@ curl -X POST https://api.wiresocket.com/connect/token \
 ```
 
 **Response:**
+
 ```json
 {
   "access_token": "eyJ...",
@@ -29,13 +31,14 @@ curl -X POST https://api.wiresocket.com/connect/token \
 }
 ```
 
-| Field | Value |
-|---|---|
-| `expires_in` | 900 seconds (15 minutes) |
-| `scope` | `WireSocket.API offline_access` |
+| Field        | Value                           |
+| ------------ | ------------------------------- |
+| `expires_in` | 900 seconds (15 minutes)        |
+| `scope`      | `WireSocket.API offline_access` |
 
 <Warning>
-  `offline_access` scope is required to receive a `refresh_token`. Without it you cannot renew sessions without re-authenticating with your `client_secret`.
+  `offline_access` scope is required to receive a `refresh_token`. Without it
+  you cannot renew sessions without re-authenticating with your `client_secret`.
 </Warning>
 
 ---
@@ -43,6 +46,7 @@ curl -X POST https://api.wiresocket.com/connect/token \
 ## JWT Claims
 
 The access token is a signed JWT. Your backend can decode it to inspect the claims — the dataplane reads these directly with no database lookup.
+
 ```json
 {
   "iss": "https://api.wiresocket.com",
@@ -52,11 +56,12 @@ The access token is a signed JWT. Your backend can decode it to inspect the clai
 
   "tenantid": "3f9a6c6e-2d9e-4c3e-a1f1-3b2c99e6b111",
   "appId": "7b1c0d8c-2d01-4c7c-b3b1-111aaa222bbb",
-  "licenseRegionCode": "IN",
+  "licenseRegionCode": "aws-us-east-1",
+  "dbCode": "aws-us-east-1",
 
   "allowed_domain_1": "example.com",
   "allowed_domain_2": "staging.example.com",
-  "allowed_domain_3": "dev.example.com",
+  "allowed_domain_3": "localhost:3000",
 
   "limits": "{\"maxConnections\":100,\"maxDocuments\":500,\"maxUsersPerDoc\":50,\"opsPerMinute\":10000}",
 
@@ -67,31 +72,33 @@ The access token is a signed JWT. Your backend can decode it to inspect the clai
 
 ### Claim Reference
 
-| Claim | Description |
-|---|---|
-| `sub` | Your `client_id` |
-| `tenantid` | Your tenant GUID — used for multi-tenant isolation |
-| `appId` | Your application GUID |
-| `licenseRegionCode` | Region where your license data is stored (`US`, `EU`, `IN`, etc.) |
-| `allowed_domain_1/2/3` | Domains permitted to connect to the dataplane |
-| `limits` | Stringified JSON containing your plan limits |
+| Claim                  | Description                                                        |
+| ---------------------- | ------------------------------------------------------------------ |
+| `sub`                  | Your `client_id`                                                   |
+| `tenantid`             | Your tenant GUID — used for multi-tenant isolation                 |
+| `appId`                | Your application GUID                                              |
+| `licenseRegionCode`    | The base region for your metadata (e.g., `aws-us-east-1`)          |
+| `dbCode`               | The specific database shard where your document metadata is stored |
+| `allowed_domain_1/2/3` | Domains permitted to connect to the dataplane                      |
+| `limits`               | Stringified JSON containing your plan limits                       |
 
 ### Plan Limits
 
 The `limits` claim contains your plan's resource caps:
 
-| Limit | Description |
-|---|---|
+| Limit            | Description                                    |
+| ---------------- | ---------------------------------------------- |
 | `maxConnections` | Total concurrent WebSocket connections allowed |
-| `maxDocuments` | Total concurrent documents allowed |
-| `maxUsersPerDoc` | Maximum users in a single document session |
-| `opsPerMinute` | Maximum CRDT operations per minute |
+| `maxDocuments`   | Total concurrent documents allowed             |
+| `maxUsersPerDoc` | Maximum users in a single document session     |
+| `opsPerMinute`   | Maximum CRDT operations per minute             |
 
 ---
 
 ## Token Renewal
 
 Access tokens expire after **15 minutes**. Use the refresh token to obtain a new access token without re-authenticating with your `client_secret`.
+
 ```bash
 curl -X POST https://api.wiresocket.com/connect/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
@@ -101,12 +108,14 @@ curl -X POST https://api.wiresocket.com/connect/token \
 ```
 
 <Info>
-  Every refresh issues a **new refresh token** and invalidates the old one. Store the latest refresh token after every renewal.
+  Every refresh issues a **new refresh token** and invalidates the old one.
+  Store the latest refresh token after every renewal.
 </Info>
 
 ### Refresh Token Expiry
 
 Refresh tokens are valid for **7 days**. If a refresh token expires, you must re-authenticate using your `client_id` and `client_secret` to start a new session.
+
 ```
 Access token expires (15 min)
         ↓
@@ -129,11 +138,11 @@ When connecting your Yjs provider, pass the access token using one of two method
   <Tab title="WebSocket Subprotocol (Recommended)">
 ```js
     const provider = new WebsocketProvider(
-      'wss://ws.wiresocket.com',
+      'wss://eu-central-1.wiresocket.net',
       'your-document-id',
       ydoc,
       {
-        protocols: ['Bearer', 'YOUR_ACCESS_TOKEN']
+        protocols: ['access_token', 'YOUR_ACCESS_TOKEN']
       }
     )
 ```
@@ -142,7 +151,7 @@ When connecting your Yjs provider, pass the access token using one of two method
   <Tab title="URL Parameter">
 ```js
     const provider = new WebsocketProvider(
-      'wss://ws.wiresocket.com?access_token=YOUR_ACCESS_TOKEN',
+      'wss://eu-central-1.wiresocket.net?token=YOUR_ACCESS_TOKEN',
       'your-document-id',
       ydoc
     )
@@ -154,17 +163,25 @@ When connecting your Yjs provider, pass the access token using one of two method
 
 ## Allowed Domains
 
-Each app supports up to **3 allowed domains**. The dataplane validates the request origin against this list and rejects connections from unlisted domains.
+Each app supports up to **3 allowed domains**. This is a critical security feature designed to prevent **Token Theft** in browser-based applications.
 
-Use the three slots for your environments:
+### How it works
 
-| Slot | Recommended Use |
-|---|---|
-| `allowed_domain_1` | Production |
-| `allowed_domain_2` | Staging |
-| `allowed_domain_3` | Local development |
+1.  **Origin Enforcement**: When a client connects to a node, the Data Plane checks the browser's `Origin` header.
+2.  **JWT Validation**: The node compares this `Origin` against the `allowed_domain` claims baked into your JWT.
+3.  **Automatic Rejection**: If the domain does not match (e.g., a token stolen and used on `evil.com`), the connection is immediately rejected.
 
-Allowed domains are configured during app creation in the dashboard and are embedded in the JWT.
+### Configuration Rules
+
+- **Normalization**: The Control Plane automatically strips protocols (`https://`) and trailing slashes. Entering `https://myapp.com/` results in `myapp.com`.
+- **Development Support**: You can add `localhost` or `localhost:port` to your slots during development.
+- **Strict Format**: Domains are validated against standard regex patterns before saving.
+
+| Slot               | Recommended Use                            |
+| ------------------ | ------------------------------------------ |
+| `allowed_domain_1` | Production (e.g., `myapp.com`)             |
+| `allowed_domain_2` | Staging (e.g., `staging.myapp.com`)        |
+| `allowed_domain_3` | Local development (e.g., `localhost:3000`) |
 
 ---
 
@@ -173,12 +190,14 @@ Allowed domains are configured during app creation in the dashboard and are embe
 If a plan is cancelled or an app is deleted, **existing connections are not immediately terminated**. Active sessions continue until the current access token expires. No new tokens can be issued after cancellation.
 
 <Info>
-  This means tenants have up to 15 minutes of continued access after a plan change takes effect. Plan accordingly if you need immediate revocation.
+  This means tenants have up to 15 minutes of continued access after a plan
+  change takes effect. Plan accordingly if you need immediate revocation.
 </Info>
 
 ## Token Verification
 
 WireSocket signs all access tokens using a **tenant-scoped RSA key pair**. If you need to verify token signatures server-side in your own infrastructure — for example, to validate a token independently without calling WireSocket APIs — you can fetch your tenant's current public keys from:
+
 ```
 https://api.wiresocket.com/{tenantId}/.well-known/jwks
 ```
@@ -189,17 +208,20 @@ Replace `{tenantId}` with your tenant GUID, available in the `tenantid` claim of
 
 WireSocket automatically rotates your tenant's signing key on a **30-day cycle**. During rotation, the endpoint returns **up to two public keys**:
 
-| Key | Description |
-|---|---|
-| Active key | Signs all new tokens |
+| Key         | Description                                               |
+| ----------- | --------------------------------------------------------- |
+| Active key  | Signs all new tokens                                      |
 | Retired key | Previous key, valid for up to **24 hours** after rotation |
 
 If you are caching the JWKS response locally, re-fetch it when signature validation fails to pick up a newly rotated key.
 
 <Warning>
-  Validate against **all keys** returned in the response, not just the first. Pinning to a single key will cause verification failures during the 24-hour rotation window.
+  Validate against **all keys** returned in the response, not just the first.
+  Pinning to a single key will cause verification failures during the 24-hour
+  rotation window.
 </Warning>
 
 <Info>
-  This endpoint is rate limited to **20 requests per 10 minutes**. Local caching is strongly recommended.
+  This endpoint is rate limited to **20 requests per 10 minutes**. Local caching
+  is strongly recommended.
 </Info>
