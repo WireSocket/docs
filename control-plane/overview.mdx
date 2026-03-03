@@ -11,7 +11,7 @@ While the Data Plane handles the real-time synchronization of your Yjs documents
 
 ## Core Elements
 
-The Control Plane manages three primary entities:
+The Control Plane manages four primary entities:
 
 ### 1. Tenant
 
@@ -25,16 +25,37 @@ A **Tenant** represents your organization or root account.
 Within a Tenant, you can create multiple **Apps**. Each App represents a specific product or environment.
 
 - **Identity**: Each App holds its own unique `client_id` and `client_secret`.
-- **Data Residency**: Every App is pinned to a **License Region** (e.g., US, EU) during creation.
-- **Database isolation**: For maximum performance and security, each App is assigned a specific regional database instance (`DbCode`), ensuring your document metadata is geographically localized.
+- **Data Residency**: Every App is pinned to a **License Region** (e.g., `aws-us-east-1`) during creation.
+- **Database isolation**: Separate from the real-time sync, each App is assigned a specific internal database instance (`DbCode`), ensuring your document metadata is geographically localized and isolated within Turso shards.
 
 ### 3. Plans
 
 A **Plan** defines the performance characteristics and usage limits for an App.
 
 - **Limits**: Controls maximum concurrent connections, document counts, and operations per minute (OPM).
-- **The "One Free" Rule**: To maintain system integrity, each Tenant is limited to **exactly one application on a Free Plan**. Additional applications require a paid subscription managed through Dodo Payments.
+- **The "One Free" Rule**: Each Tenant is limited to **exactly one application on a Free Plan**. Additional applications require a paid subscription managed through Dodo Payments.
 - **Flexibility**: Plans can be upgraded or downgraded through the dashboard. Paid-to-paid transitions are prorated immediately.
+
+### 4. Nodes (Infrastructure Registry)
+
+The Control Plane acts as the **Global Registry** for the Data Plane's physical infrastructure.
+
+- **Node Management**: It maintains the registry of all active and inactive WebSocket nodes across the globe (e.g., `eu-central-1.wiresocket.net`).
+- **Regional Orchestration**: It exposes APIs to activate or deactivate nodes, enabling zero-downtime maintenance and fleet scaling.
+- **Discovery Backbone**: The Control Plane powers the [Discovery process](/data-plane/dataplane#document-discovery), allowing clients to resolve the correct physical node for any document.
+
+---
+
+## Security Enforcement
+
+The Control Plane is where you define the security boundaries that the Data Plane then enforces at the edge.
+
+### Allowed Domains
+
+To prevent **Token Theft**, you can whitelist up to 3 domains (e.g., `myapp.com`, `localhost:3000`).
+
+- **Baked-in security**: These domains are embedded directly into your JWT claims.
+- **Edge validation**: Data Plane nodes check the `Origin` header of every incoming connection against these claims. If they don't match, the connection is rejected.
 
 ---
 
