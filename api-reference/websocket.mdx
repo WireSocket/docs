@@ -1,69 +1,93 @@
 ---
 title: "WebSocket Sync"
-description: "Real-time Yjs document synchronization endpoint."
+description: "The core of WireSocket for real-time Yjs document synchronization."
 ---
 
-The WebSocket endpoint is the core WireSocket product. All Yjs document updates, awareness state (cursors, presence), and heartbeats flow through this connection.
+The WebSocket endpoint is the core of WireSocket. All Yjs document updates, awareness state (presence, cursors), and heartbeats flow through this high-performance connection.
 
-Always call the [Discovery API](/api-reference/discovery) first to resolve the correct regional URL before connecting.
+<Important>
+  Always call the **[Discovery API](/api-reference/discovery)** first to resolve
+  the current active region for a document. Connecting to the wrong region will
+  result in a **4009 redirect**.
+</Important>
 
 ---
 
 ## Endpoint
-```
-wss://{region}.ws.wiresocket.com
+
+```http
+wss://{region}.wiresocket.net/{documentName}
 ```
 
-Use the `url` returned by the Discovery API as the endpoint — do not hardcode a regional URL.
+Example: `wss://eu-central-1.wiresocket.net/my-document-id`
 
 ---
 
 ## Authentication
 
-Pass your JWT using one of the following methods:
+The Data Plane supports three ways to authenticate the WebSocket handshake. Method 1 is recommended as it keeps the token out of browser history and server logs.
 
-| Method | How |
-|---|---|
-| WebSocket Subprotocol (recommended) | `protocols: ['Bearer', 'YOUR_ACCESS_TOKEN']` |
-| Query parameter | `wss://eu.ws.wiresocket.com?token=YOUR_ACCESS_TOKEN` |
-| Authorization header | `Authorization: Bearer YOUR_ACCESS_TOKEN` |
-
-The subprotocol method is preferred — it keeps the token out of server access logs and browser history.
+| Method                        | Implementation                                    |
+| :---------------------------- | :------------------------------------------------ |
+| **1. WebSocket Sub-protocol** | `protocols: ['access_token', 'YOUR_JWT']`         |
+| **2. Query Parameter**        | `wss://{region}.wiresocket.net?token=YOUR_JWT`    |
+| **3. Authorization Header**   | `Headers: { 'Authorization': 'Bearer YOUR_JWT' }` |
 
 ---
 
-## Connection
+## Connection Example
+
+Using the standard `y-websocket` provider:
+
 ```js
-import * as Y from 'yjs'
-import { WebsocketProvider } from 'y-websocket'
+import * as Y from "yjs";
+import { WebsocketProvider } from "y-websocket";
 
-const ydoc = new Y.Doc()
+const ydoc = new Y.Doc();
 
-// Use URL from Discovery API
+// 1. Resolve URL via Discovery API first
+// 2. Initialize provider
 const provider = new WebsocketProvider(
-  'wss://eu.ws.wiresocket.com',
-  'your-document-id',
+  "wss://eu-central-1.wiresocket.net", // Resolved URL
+  "my-document-id",
   ydoc,
   {
-    protocols: ['Bearer', 'YOUR_ACCESS_TOKEN']
-  }
-)
+    // Pass JWT via sub-protocol
+    protocols: ["access_token", "YOUR_JWT"],
+  },
+);
 ```
 
 ---
 
-## Close Codes
+## Close Codes (Error Reference)
 
-| Code | Name | Description |
-|---|---|---|
-| `4001` | Missing Token | No JWT provided |
-| `4002` | Invalid Token | Token expired, malformed, or invalid signature |
-| `4003` | Forbidden | Token does not match tenant or application |
-| `4004` | Connection Limit | Application concurrent connection cap reached |
-| `4005` | Document Limit | Application concurrent document cap reached |
-| `4006` | Rate Limit | Operations per minute threshold exceeded |
-| `4007` | Invalid Name | Document name violates naming rules |
-| `4008` | Users Per Doc | Document concurrent user cap reached |
-| `4009` | Wrong Region | Document is active in another region — parse `REDIRECT:` from close reason |
+If a connection is rejected or closed, the Data Plane returns one of the following codes:
 
-See [Error Reference](/reference/error-reference) for full details and recommended handling for each code.
+| Code     | Name             | Description                                                                                   |
+| :------- | :--------------- | :-------------------------------------------------------------------------------------------- |
+| **4001** | Missing Token    | No JWT was provided in the handshake.                                                         |
+| **4002** | Invalid Token    | Token is expired, malformed, or has an invalid signature.                                     |
+| **4003** | Forbidden        | The token is valid but the tenantId or appId claims are rejected.                             |
+| **4004** | Connection Limit | Your application has reached its concurrent connection cap.                                   |
+| **4005** | Document Limit   | Your application has reached its concurrent document cap.                                     |
+| **4006** | Rate Limit       | Request frequency from this IP is too high.                                                   |
+| **4007** | Invalid Name     | The document name violates internal naming rules.                                             |
+| **4008** | User Limit       | The max number of users per document (`maxUsersPerDoc`) is reached.                           |
+| **4009** | Wrong Region     | The document is active in another region. The reason field will contain `REDIRECT:wss://...`. |
+
+---
+
+## Handling Redirection (4009)
+
+If you receive a `4009` close code, your client should parse the reason string to find the correct regional URL and reconnect immediately:
+
+```js
+provider.ws.onclose = (event) => {
+  if (event.code === 4009 && event.reason.startsWith("REDIRECT:")) {
+    const newUrl = event.reason.replace("REDIRECT:", "");
+    console.log("Redirecting to:", newUrl);
+    // Trigger reconnection logic with newUrl
+  }
+};
+```

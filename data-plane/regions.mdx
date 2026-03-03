@@ -1,0 +1,91 @@
+---
+title: "WebSocket Regions"
+description: "Connect your users to the nearest WebSocket nodes for real-time synchronization."
+---
+
+WireSocket operates a globally distributed network of WebSocket Nodes. While your app's configuration is anchored in a License Region, your users connect to these regional nodes for the actual data synchronization.
+
+---
+
+## Regional Coding
+
+| Type                 | Format                  | Example         |
+| :------------------- | :---------------------- | :-------------- |
+| **License Region**   | `aws-{provider-region}` | `aws-eu-west-1` |
+| **WebSocket Region** | `{region-code}`         | `eu-central-1`  |
+
+<Important>
+  **Always use the non-prefixed code for WebSocket connection URLs and Discovery
+  API requests.**
+</Important>
+
+---
+
+## Available License Regions
+
+| Code                 | Location              |
+| :------------------- | :-------------------- |
+| `aws-ap-northeast-1` | Asia Pacific (Tokyo)  |
+| `aws-ap-south-1`     | Asia Pacific (Mumbai) |
+| `aws-eu-west-1`      | Europe (Ireland)      |
+| `aws-us-east-1`      | US East (N. Virginia) |
+| `aws-us-east-2`      | US East (Ohio)        |
+| `aws-us-west-2`      | US West (Oregon)      |
+
+---
+
+## Available WebSocket Regions
+
+| Region           | URL                                 | Status         |
+| :--------------- | :---------------------------------- | :------------- |
+| Europe (Central) | `wss://eu-central-1.wiresocket.net` | ✅ Live        |
+| US East          | `wss://us-east-1.wiresocket.net`    | 🔜 Coming soon |
+
+---
+
+## Architecture Logic
+
+Your **License Region** (`dbCode`) is the database "home" for your app's metadata. When a user connects to a node, that node queries the `dbCode` database to see if the document is already active elsewhere.
+
+This allows a user to hit a node in London (`eu-central-1`) and be automatically redirected if the document is already pinned to a node in New York (`us-east-1`).
+
+---
+
+## Regional Routing & Pinning
+
+To ensure all users on a document see the same state, WireSocket employs a **Document Pinning** architecture.
+
+1.  **First Connection**: When a user opens a document that isn't currently active, the node they connect to becomes the **Pinned Region** for that document.
+2.  **Session Registry**: The node registers itself as the `active_region` in your application's metadata database (located in the `dbCode` region).
+3.  **Subsequent Connections**: Any other user attempting to connect to that document will be checked against this registry and routed to the pinned region.
+
+### Proactive Discovery (Recommended)
+
+Before establishing a WebSocket connection, your client should call the Discovery API. This returns the exact node URL (including the document ID) to connect to.
+
+```http
+GET https://{region-code}.wiresocket.net/discovery?documentName=my-document
+Authorization: Bearer YOUR_TOKEN
+```
+
+### Reactive Redirection
+
+If a client connects to the "wrong" region directly (e.g., they hit `eu-central-1` but the doc is pinned to `us-east-1`), the Data Plane rejects the connection with a redirect instruction:
+
+- **Close Code**: `4009`
+- **Reason**: `REDIRECT:wss://us-east-1.wiresocket.net/my-document`
+
+---
+
+## Technical Implementation
+
+### The JWT Claims
+
+Your JWT includes two critical routing claims:
+
+- **`dbCode`**: Tells the Data Plane where to find your app's metadata and limits. This matches your **License Region** (e.g., `aws-eu-west-1`).
+- **`regionCode`**: The region closest to the user. This is where the client should attempt to connect if it doesn't use Discovery.
+
+### Pinning Expiration
+
+A document remains pinned to a region as long as there is at least one active connection. Once the last user disconnects, a **10-second grace period** starts. If no one reconnects within that window, the document is "unpinned," allowing the next connection to pin it to any available region.

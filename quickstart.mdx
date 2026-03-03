@@ -26,8 +26,9 @@ To connect to the WireSocket dataplane, a **JWT access token** is required. Toke
     Choose the **License Region** for this app. This defines where your app's license and plan data is stored.
 
     <Warning>
-      The License Region cannot be changed after the app is created. Choose the region closest to your primary user base.
+      The License Region is a "set-once" property. These regions are prefixed with `aws-` (e.g., `aws-us-east-1`). Choose the one closest to your primary user base.
     </Warning>
+
   </Step>
   <Step title="Save your credentials">
     After creation, copy your **Client ID** and **Client Secret** immediately. The secret is shown only once.
@@ -35,6 +36,7 @@ To connect to the WireSocket dataplane, a **JWT access token** is required. Toke
     <Warning>
       Never expose your `client_secret` in browser code or public repositories. It is a server-side credential only.
     </Warning>
+
   </Step>
 </Steps>
 
@@ -47,17 +49,20 @@ Your app cannot connect to the WireSocket dataplane until a plan is active.
 Open your app from the **Apps** list and go to the **Plans** tab. Select the plan that fits your needs — including **Free** — and click **Subscribe** to activate it.
 
 <Warning>
-  Each app requires its own plan. An app without an active plan cannot issue tokens or connect to the dataplane.
+  Each app requires its own plan. An app without an active plan cannot issue
+  tokens or connect to the dataplane.
 </Warning>
 
 <Info>
-  Only one app per account can be on the Free plan. Additional apps require a paid plan to activate dataplane access.
+  Only one app per account can be on the Free plan. Additional apps require a
+  paid plan to activate dataplane access.
 </Info>
 ---
 
 ## 4. Get an Access Token
 
 Exchange your credentials for a JWT access token from your **backend server**.
+
 ```bash
 curl -X POST https://api.wiresocket.com/connect/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
@@ -68,6 +73,7 @@ curl -X POST https://api.wiresocket.com/connect/token \
 ```
 
 **Response:**
+
 ```json
 {
   "access_token": "eyJ...",
@@ -78,7 +84,9 @@ curl -X POST https://api.wiresocket.com/connect/token \
 ```
 
 <Info>
-  Access tokens are valid for **15 minutes**. Use the `refresh_token` to obtain a new access token without re-authenticating. See [Token Renewal](/authentication) for implementation guidance.
+  Access tokens are valid for **15 minutes**. Use the `refresh_token` to obtain
+  a new access token without re-authenticating. See [Token
+  Renewal](/authentication) for implementation guidance.
 </Info>
 
 The JWT contains your app's plan limits. The WireSocket dataplane reads these claims directly — no database lookup required.
@@ -98,14 +106,15 @@ import { WebsocketProvider } from 'y-websocket'
 const ydoc = new Y.Doc()
 
 const provider = new WebsocketProvider(
-  'wss://ws.wiresocket.com',
-  'your-document-id',
-  ydoc,
-  {
-    protocols: ['Bearer', 'YOUR_ACCESS_TOKEN']
-  }
+'wss://eu-central-1.wiresocket.net',
+'your-document-id',
+ydoc,
+{
+protocols: ['Bearer', 'YOUR_ACCESS_TOKEN']
+}
 )
-```
+
+````
     Preferred — keeps the token out of server access logs and browser history.
   </Tab>
   <Tab title="URL Parameter">
@@ -116,11 +125,12 @@ import { WebsocketProvider } from 'y-websocket'
 const ydoc = new Y.Doc()
 
 const provider = new WebsocketProvider(
-  'wss://ws.wiresocket.com?access_token=YOUR_ACCESS_TOKEN',
+  'wss://eu-central-1.wiresocket.net?access_token=YOUR_ACCESS_TOKEN',
   'your-document-id',
   ydoc
 )
-```
+````
+
   </Tab>
 </Tabs>
 
@@ -132,7 +142,8 @@ Your Yjs document is now syncing through WireSocket. Any changes made by connect
 
 <CardGroup cols={2}>
   <Card title="Token Renewal & Auth" icon="key-skeleton" href="/authentication">
-    Implement refresh token rotation and keep connections alive beyond 15 minutes.
+    Implement refresh token rotation and keep connections alive beyond 15
+    minutes.
   </Card>
   <Card title="Dataplane & Editor Setup" icon="plug" href="/dataplane">
     Handle regions, reconnection logic, and editor integration.

@@ -6,11 +6,13 @@ description: "WireSocket dataplane HTTP and WebSocket endpoints."
 The WireSocket dataplane exposes three endpoints for tenant applications. All endpoints are available in every deployed region.
 
 ## Base URL
+
 ```
-https://{region}.ws.wiresocket.com
+https://{region-code}.wiresocket.net
 ```
 
-Replace `{region}` with any available region (e.g. `eu`). Document locations are stored in a global registry — any regional node can look up any document regardless of where it is hosted and return the correct node URL.
+Replace `{region-code}` with any available node region (e.g. `eu-central-1`). Any regional node can look up document locations in our global registry and return the correct destination.
+
 ## Authentication
 
 All endpoints require a valid JWT access token issued by the WireSocket control plane. See [Authentication](/authentication) for how to obtain and refresh tokens.
@@ -18,14 +20,22 @@ All endpoints require a valid JWT access token issued by the WireSocket control 
 ## Endpoints
 
 <CardGroup cols={1}>
-  <Card title="Discovery" icon="magnifying-glass" href="/api-reference/discovery">
-    Resolve the correct regional node for a document before connecting. Eliminates wrong-region handshakes and ensures lowest latency on first connect.
+  <Card
+    title="Discovery"
+    icon="magnifying-glass"
+    href="/api-reference/discovery"
+  >
+    Resolve the correct regional node for a document before connecting.
+    Eliminates wrong-region handshakes and ensures lowest latency on first
+    connect.
   </Card>
   <Card title="WebSocket Sync" icon="bolt" href="/api-reference/websocket">
-    The core WireSocket product. All Yjs document updates, awareness state, and heartbeats flow through this connection.
+    The core WireSocket product. All Yjs document updates, awareness state, and
+    heartbeats flow through this connection.
   </Card>
   <Card title="Usage" icon="chart-line" href="/api-reference/usage">
-    Get a real-time snapshot of your application's current concurrent connections and active documents across the global network.
+    Get a real-time snapshot of your application's current concurrent
+    connections and active documents across the global network.
   </Card>
 </CardGroup>
 

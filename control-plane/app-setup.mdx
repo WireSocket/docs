@@ -1,0 +1,64 @@
+---
+title: "App Setup & Credentials"
+description: "How to manage your App's credentials and keep your secrets secure."
+---
+
+Every App created in the WireSocket Control Plane is assigned a unique `client_id` and `client_secret`. These are the keys to your collaborative world.
+
+---
+
+1.  **Select License Region**: Choose the geographic location for your app's management data. This determines where your license, plan limits, and document pinning metadata are stored.
+2.  **App Name**: Provide a unique identifier for your application.
+3.  **Capture Credentials**: Once created, you will see your `client_id` and `client_secret`. **Copy them immediately.**
+
+<Warning>
+  The **License Region** is fixed at creation. It cannot be changed later
+  because your data is physically provisioned in that region's database shard.
+</Warning>
+
+---
+
+## Accessing Credentials
+
+You can find your credentials in the **Apps** section of the dashboard:
+
+1. Click on your App's name.
+2. In the **Overview** tab, you will find your `client_id`.
+3. The `client_secret` is visible only during initial creation. If you didn't save it, you must click **Regenerate Secret**.
+
+---
+
+## Security Best Practice: Use-Once Pattern
+
+We recommend a **"Use-Once"** architectural pattern for your `client_secret`. This minimizes the risk of secret exposure.
+
+Instead of your authentication service reading the `client_secret` from a database for every token request, follow this flow:
+
+1. **Cold Start**: Your auth service starts and retrieves the `client_secret` from a secure vault.
+2. **Bootstrap**: Call the `/token` endpoint with the secret to get an initial **Access Token + Refresh Token**.
+3. **Discard**: The service can now discard the `client_secret` from its local memory.
+4. **Maintenance**: For all subsequent requests, use the **Refresh Token** to obtain new Access Tokens.
+
+This way, the `client_secret` is only active in your infrastructure for a few seconds.
+
+<Tip>
+  If your auth service is serverless (e.g., AWS Lambda or Vercel Functions), use
+  a caching layer like Redis or Momento to store the Refresh Token between
+  invocations.
+</Tip>
+
+---
+
+## Rotating Secrets
+
+Security is dynamic. If you suspect a `client_secret` has been compromised, you should rotate it immediately:
+
+- Navigate to your App's **Settings**.
+- Click **Regenerate client_secret**.
+- Update your auth service with the new secret and restart it.
+
+<Warning>
+  Regenerating a secret invalidates the old one instantly. Any service
+  attempting to use the old secret or a refresh token associated with it will
+  receive a `401 Unauthorized` error.
+</Warning>

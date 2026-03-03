@@ -27,11 +27,21 @@
             ]
           },
           {
-            "group": "Core Concepts",
+            "group": "Control Plane",
             "pages": [
-              "core-concepts/dataplane",
-              "core-concepts/document-lifecycle",
-              "core-concepts/regions"
+              "control-plane/overview",
+              "control-plane/onboarding",
+              "control-plane/license-regions",
+              "control-plane/app-setup",
+              "control-plane/billing"
+            ]
+          },
+          {
+            "group": "Data Plane",
+            "pages": [
+              "data-plane/dataplane",
+              "data-plane/document-lifecycle",
+              "data-plane/regions"
             ]
           },
           {

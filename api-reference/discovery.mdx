@@ -3,62 +3,55 @@ title: "Discovery"
 description: "Resolve the correct regional node for a document before connecting."
 ---
 
-Use the Discovery endpoint to find where a document is currently hosted before opening a WebSocket connection. This eliminates wrong-region handshake failures and ensures the lowest possible latency on first connect.
+WireSocket is a globally distributed system. While your App's metadata lives in a **License Region** (e.g., `aws-eu-west-1`), your documents are hosted on **Node Regions** (e.g., `eu-central-1`) across our global WebSocket fleet.
 
-See [Document Discovery](/core-concepts/dataplane#document-discovery) for full implementation guidance.
+Use the Discovery endpoint to find exactly which node is currently hosting a document.
 
 ---
 
 ## Endpoint
+
 ```http
-GET https://{region}.ws.wiresocket.com/discovery
+GET https://{region-code}.wiresocket.net/discovery
 ```
 
-Replace `{region}` with any available region (e.g. `eu`). Document locations are stored in a global registry — any regional node can look up any document regardless of where it is hosted and return the correct node URL.
+### The Global Registry
+
+You can call the `/discovery` endpoint on any active WireSocket node. Any regional node can look up the location of any document in our global registry and return the correct destination.
+
 ---
 
 ## Authentication
 
-Pass your JWT using one of the following:
+Discovery requires a valid App JWT. Pass it via:
 
-| Method | How |
-|---|---|
-| Authorization header (recommended) | `Authorization: Bearer YOUR_ACCESS_TOKEN` |
-| Query parameter | `?token=YOUR_ACCESS_TOKEN` |
+| Method                                 | How                                       |
+| :------------------------------------- | :---------------------------------------- |
+| **Authorization header** (recommended) | `Authorization: Bearer YOUR_ACCESS_TOKEN` |
+| **Query parameter**                    | `?token=YOUR_ACCESS_TOKEN`                |
 
 ---
 
 ## Query Parameters
 
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `documentName` | string | Yes | The document ID to look up (unprefixed — do not include `tenantId::appId::`) |
-| `token` | string | No | JWT fallback if Authorization header cannot be set |
+| Parameter      | Type   | Required | Description                                                                                            |
+| :------------- | :----- | :------- | :----------------------------------------------------------------------------------------------------- |
+| `documentName` | string | Yes      | Unprefixed document ID (e.g., `my-doc-123`). The system resolves the tenant/app context from your JWT. |
 
 ---
 
 ## Response
+
 ```json
 {
-  "region": "aws-eu-west-1",
-  "url": "wss://eu.ws.wiresocket.com",
+  "region": "eu-central-1",
+  "url": "wss://eu-central-1.wiresocket.net/my-doc-id",
   "isNew": false
 }
 ```
 
-| Field | Type | Description |
-|---|---|---|
-| `region` | string | The region currently hosting this document |
-| `url` | string | The WebSocket node URL to connect to. Use this directly in your provider |
-| `isNew` | boolean | `true` if no active session exists — connect to your preferred region |
-
----
-
-## Error Responses
-
-| Status | Description | What To Do |
-|---|---|---|
-| `400` | Missing `documentName` parameter | Add `documentName` to your query string |
-| `401` | JWT is missing or invalid | Re-authenticate and retry with a fresh token |
-| `429` | Rate limit exceeded | Back off and retry after 60 seconds |
-| `503` | Node is degraded or overloaded | Retry with backoff using the `Retry-After` header |
+| Field    | Type    | Description                                                                       |
+| :------- | :------ | :-------------------------------------------------------------------------------- |
+| `region` | string  | The cloud region code (e.g., `eu-central-1`) currently hosting the doc.           |
+| `url`    | string  | The full WebSocket URL including the doc ID. Include this as your provider's URL. |
+| `isNew`  | boolean | `true` if this document is fresh. You can connect to your closest region.         |

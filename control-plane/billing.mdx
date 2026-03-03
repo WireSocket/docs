@@ -1,0 +1,52 @@
+---
+title: "Plan Assignment & Billing"
+description: "How to scale your App and manage subscriptions."
+---
+
+Every App in WireSocket must be linked to a **Plan**. The Plan determines the resource limits (Connections, OPM) available to that specific application.
+
+---
+
+## The "One Free Plan" Policy
+
+To support developers while maintaining system stability, WireSocket offers a generous Free tier with the following rule:
+
+- **Limit**: Each **Tenant** is allowed exactly **one** application on a Free plan.
+- **Enforcement**: If you attempt to assign a Free plan to a second App, the Control Plane will block the request. You must either upgrade the existing Free app to a Paid tier or delete it before creating a new one.
+
+---
+
+## Assigning or Changing a Plan
+
+You can change an App's plan at any time through the **Plans** tab in the dashboard.
+
+### The Process
+
+1.  **Selection**: Choose your new target Plan.
+2.  **Payment (Paid Plans)**: If moving to a Paid plan for the first time, you will be redirected to our secure checkout (powered by Dodo Payments) to provide billing details.
+3.  **Synchronization**: Once the plan is confirmed, the Control Plane uses distributed locking to safely update your App's metadata and push the new limits to the Data Plane instantly.
+
+---
+
+## Understanding Proration
+
+WireSocket uses standard SaaS billing logic to ensure you only pay for what you use:
+
+- **Free → Paid**: The change happens **immediately**, and you are charged the full amount for the upcoming billing cycle.
+- **Paid → Paid (Upgrade/Downgrade)**: The change is **prorated immediately**. Our system calculates the price difference for the remainder of the month and applies a credit or a small charge to your next invoice.
+
+---
+
+## Subscription Status
+
+You can monitor your subscription health in the **Billing** section:
+
+- **Active**: Everything is running smoothly.
+- **Past Due**: A payment attempt failed. You have a grace period to update your card before the App is automatically disabled.
+- **Cancelled**: The App will remain active until the end of the current billing period, after which it will revert to an "Inactive" state.
+
+<Info>
+  **Important**: Disabling or deleting an App does not automatically cancel a
+  paid subscription. Always ensure you manage your subscription status in the
+  Billing tab before deleting resources.
+</Info>

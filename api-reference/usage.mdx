@@ -1,35 +1,40 @@
 ---
 title: "Usage"
-description: "Get a real-time snapshot of your application's current resource consumption."
+description: "The Usage endpoint returns a live snapshot of your application's current resource consumption."
 ---
 
-The Usage endpoint returns a live snapshot of your application's current concurrent connections and active documents across the entire WireSocket network. Use this to power admin dashboards, monitor limits, and trigger upgrade prompts before users hit hard limits.
+The Usage endpoint returns a live snapshot of your application's current resource consumption across the entire WireSocket network. Use this to power admin dashboards, monitor limits, and trigger upgrade prompts.
 
 ---
 
 ## Endpoint
+
 ```http
-GET https://{region}.ws.wiresocket.com/usage
+GET https://{region}.wiresocket.net/usage
 ```
+
+Example: `https://eu-central-1.wiresocket.net/usage`
 
 ---
 
 ## Authentication
 
-Pass your JWT using one of the following:
+Pass your JWT using one of the following methods:
 
-| Method | How |
-|---|---|
-| Authorization header (recommended) | `Authorization: Bearer YOUR_ACCESS_TOKEN` |
-| Query parameter | `?token=YOUR_ACCESS_TOKEN` |
+| Method                                 | How                                |
+| :------------------------------------- | :--------------------------------- |
+| **Authorization header** (Recommended) | `Authorization: Bearer YOUR_TOKEN` |
+| **Query parameter**                    | `?token=YOUR_TOKEN`                |
 
-<Info>
-  The JWT identifies both the tenant and application. This endpoint is safe to call directly from the browser — users will only ever see their own application's data.
-</Info>
+<Note>
+  This endpoint is safe to call directly from the browser/frontend. The JWT
+  ensures users only ever see data for their own tenantId and appId.
+</Note>
 
 ---
 
-## Response
+## Response Structure
+
 ```json
 {
   "tenantId": "550e8400-e29b-41d4-a716-446655440000",
@@ -48,34 +53,35 @@ Pass your JWT using one of the following:
       "status": "healthy"
     }
   },
-  "timestamp": "2026-02-25T14:40:00.000Z"
+  "timestamp": "2026-03-03T18:55:00.000Z"
 }
 ```
 
-| Field | Type | Description |
-|---|---|---|
-| `usage.connections.current` | number | Total active WebSocket connections across all regions |
-| `usage.connections.limit` | number | Your plan's `maxConnections` value |
-| `usage.connections.percent` | number | Current usage as a percentage of limit |
-| `usage.connections.status` | string | `healthy` below 75%, `warning` 75–89%, `critical` 90% and above |
-| `usage.documents.current` | number | Total unique documents currently being synced |
-| `usage.documents.limit` | number | Your plan's `maxDocuments` value |
-| `timestamp` | string | UTC timestamp of the snapshot |
+### Field Definitions
+
+| Field                       | Type   | Description                                                   |
+| :-------------------------- | :----- | :------------------------------------------------------------ |
+| `usage.connections.current` | number | Total active WebSocket connections across all global regions. |
+| `usage.connections.limit`   | number | Your plan's `maxConnections` limit.                           |
+| `usage.connections.percent` | number | Usage as a percentage of the limit.                           |
+| `usage.connections.status`  | string | `healthy` (<75%), `warning` (75–89%), `critical` (≥90%).      |
+| `usage.documents.current`   | number | Total unique documents currently being synchronized.          |
+| `timestamp`                 | string | ISO 8601 UTC timestamp of the snapshot.                       |
 
 ---
 
 ## Error Responses
 
-| Status | Description | What To Do |
-|---|---|---|
-| `401` | JWT is missing or invalid | Re-authenticate and retry with a fresh token |
-| `429` | Rate limit exceeded | Back off — this endpoint allows 12 requests per minute |
-| `503` | Node degraded or overloaded | Retry with backoff using the `Retry-After` header |
+| Status  | Code                  | Description                                                     |
+| :------ | :-------------------- | :-------------------------------------------------------------- |
+| **401** | `Unauthorized`        | JWT is missing, expired, or invalid.                            |
+| **429** | `Too Many Requests`   | STRICT rate limit exceeded (applies per IP).                    |
+| **503** | `Service Unavailable` | The node is overloaded or the metadata database is unreachable. |
 
 ---
 
 ## Recommendations
 
-- Poll no more than **once per minute** for admin dashboards — the `STRICT` rate limit allows up to once every 5 seconds but once per minute is sufficient for most use cases
-- Use `percent` and `status` to drive progress bars or color-coded health indicators
-- Trigger an upgrade prompt when `status` reaches `warning` to prevent users hitting hard limits in production
+- **Polling Frequency**: For most dashboards, polling once per minute is recommended. The endpoint uses a `STRICT` rate limit policy to prevent abuse.
+- **Proactive Upgrades**: We recommend triggering upgrade prompts in your UI when the status reaches `warning` to ensure zero service interruption for your users.
+- **Global Accuracy**: Because WireSocket uses a unified metadata layer, calling the `/usage` endpoint on any region will return your global application totals, not just the data for that specific region.

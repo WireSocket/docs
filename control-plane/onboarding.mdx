@@ -1,0 +1,66 @@
+---
+title: "Onboarding"
+description: "Get your account ready for production in three simple steps."
+---
+
+Welcome to WireSocket. This guide will walk you through the process of setting up your account and preparing your first application for real-time synchronization.
+
+---
+
+## 1. Create a Tenant Account
+
+Every organization starts by creating a Tenant account. This serves as the administrative hub for your collaborative ecosystem.
+
+- Go to [dashboard.wiresocket.com](https://dashboard.wiresocket.com).
+- Sign up using your email or GitHub account.
+- **Initial State**: Your account will start in a "Pending" state while we prepare your dedicated cryptographic environment.
+
+---
+
+## 2. Account Approval & Activation
+
+To ensure security and proper resource allocation, each new Tenant requires a one-time manual approval from the WireSocket administration.
+
+- **Verification**: Our team reviews your registration.
+- **Provisioning**: Upon approval, the system generates your unique **Asymmetric Signing Keys** and creates your billing Profile in our payment system (Dodo Payments).
+- You will receive an email once your account is **Active**.
+
+---
+
+## 3. Set Up Your First App
+
+An App is your gateway to the Data Plane. It contains the configuration and credentials your backend will use to authenticate users.
+
+<Steps>
+  <Step title="Create Application">
+    Click on **Apps** in the sidebar and select **Add Application**.
+  </Step>
+  <Step title="Region & Data Residency">
+    Provide a name (e.g., `production-editor`) and select your **License
+    Region**. WireSocket will automatically provision a regional database to
+    store your app's metadata.
+  </Step>
+  <Step title="Capture Credentials">
+    Once created, you will see your `client_id` and `client_secret`. **Copy them
+    immediately.**
+    <Warning>
+      The `client_secret` is only shown once. If lost, you must regenerate it,
+      which invalidates any service currently using the old secret.
+    </Warning>
+  </Step>
+</Steps>
+
+---
+
+## 4. Activate a Plan
+
+Even for development, your App needs an active Plan to communicate with the Data Plane nodes.
+
+- Navigate to your App's **Settings** or **Plans** tab.
+- Choose a plan. The **Free** plan is perfect for testing (limit: one free plan per tenant).
+- Click **Activate**. Your App is now ready to issue tokens.
+
+<Info>
+  Once active, the Control Plane pushes your configuration (allowed domains, OPM
+  limits) to our global Data Plane nodes within seconds.
+</Info>

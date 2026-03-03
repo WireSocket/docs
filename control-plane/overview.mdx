@@ -1,0 +1,57 @@
+---
+title: "Control Plane Overview"
+description: "Understand how WireSocket manages your account, applications, and authentication tokens."
+---
+
+The WireSocket infrastructure is divided into two distinct layers: the **Control Plane** and the **Data Plane**.
+
+While the Data Plane handles the real-time synchronization of your Yjs documents, the **Control Plane** is responsible for the management, security, and regional orchestration of your ecosystem.
+
+---
+
+## Core Elements
+
+The Control Plane manages three primary entities:
+
+### 1. Tenant
+
+A **Tenant** represents your organization or root account.
+
+- Top-level container for resources, billing, and team members.
+- Each Tenant has its own unique **Signing Keys** for JWT issuance, ensuring cryptographic isolation from other organizations.
+
+### 2. Apps
+
+Within a Tenant, you can create multiple **Apps**. Each App represents a specific product or environment.
+
+- **Identity**: Each App holds its own unique `client_id` and `client_secret`.
+- **Data Residency**: Every App is pinned to a **License Region** (e.g., US, EU) during creation.
+- **Database isolation**: For maximum performance and security, each App is assigned a specific regional database instance (`DbCode`), ensuring your document metadata is geographically localized.
+
+### 3. Plans
+
+A **Plan** defines the performance characteristics and usage limits for an App.
+
+- **Limits**: Controls maximum concurrent connections, document counts, and operations per minute (OPM).
+- **The "One Free" Rule**: To maintain system integrity, each Tenant is limited to **exactly one application on a Free Plan**. Additional applications require a paid subscription managed through Dodo Payments.
+- **Flexibility**: Plans can be upgraded or downgraded through the dashboard. Paid-to-paid transitions are prorated immediately.
+
+---
+
+## The Token Lifecycle
+
+WireSocket uses a standard **OAuth 2 Machine-to-Machine (M2M)** flow. Your backend server exchanges its App credentials for a token, which is then passed to your frontend clients.
+
+### Security First: Refresh Tokens
+
+WireSocket supports **Refresh Tokens** out of the box to minimize the exposure of your sensitive credentials.
+
+1. **Access Token**: Short-lived (15 minutes). Used by your clients to connect to the Data Plane.
+2. **Refresh Token**: Long-lived. Used by your backend to request new Access Tokens without needing to re-send the `client_secret`.
+
+<Info>
+  **Best Practice**: Store your `client_secret` in a secure vault (like Doppler
+  or AWS Secrets Manager). Your auth service should only use the secret once
+  during a "cold start" to get a token pair, then use the Refresh Token for all
+  subsequent rotations.
+</Info>

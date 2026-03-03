@@ -1,0 +1,232 @@
+---
+title: "Dataplane"
+description: "Connect your editor to the WireSocket dataplane, handle regions, and manage reconnection."
+---
+
+The WireSocket dataplane is a globally distributed set of WebSocket nodes. This page covers how to connect your editor, handle regions, and manage token renewal and reconnection.
+
+---
+
+## Regions
+
+WireSocket has two region concepts you need to understand:
+
+**License Region** — Set during app creation. Defines where your app's license and plan data is stored. This is the **`dbCode`** claim in your JWT. These regions always have an `aws-` prefix.
+
+| Code                 | Location              |
+| -------------------- | --------------------- |
+| `aws-ap-northeast-1` | Asia Pacific (Tokyo)  |
+| `aws-ap-south-1`     | Asia Pacific (Mumbai) |
+| `aws-eu-west-1`      | Europe (Ireland)      |
+| `aws-us-east-1`      | US East (N. Virginia) |
+| `aws-us-east-2`      | US East (Ohio)        |
+| `aws-us-west-2`      | US West (Oregon)      |
+
+**WebSocket Regions** — The standard cloud regions where your editors connect for real-time sync. Each region has its own URL:
+
+```
+wss://{region-code}.wiresocket.net
+```
+
+Currently available WebSocket regions and their URLs are listed in your [dashboard](https://app.wiresocket.com).
+
+<Info>
+  License Region (`dbCode`) and WebSocket region (`regionCode`) are independent.
+  Your license can be stored in EU while your editors connect to a US node.
+</Info>
+
+---
+
+## Document Discovery
+
+WireSocket supports two strategies for connecting to the correct regional node for your document:
+
+| Strategy              | How                                               | Best For                                   |
+| --------------------- | ------------------------------------------------- | ------------------------------------------ |
+| **Discovery first**   | Call `/discovery`, then connect to returned URL   | Lowest latency, zero wrong-region attempts |
+| **Connect and catch** | Connect directly, handle `4009 REDIRECT` on error | Fewer HTTP requests, simpler client code   |
+
+Both are fully supported. Use Discovery if first-connect latency matters. Use connect-and-catch if you want to avoid the extra HTTP round trip.
+
+### Discovery First
+
+```http
+GET https://{region-code}.wiresocket.net/discovery?documentName=your-document-id
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+**Response:**
+
+```json
+{
+  "region": "eu-central-1",
+  "url": "wss://eu-central-1.wiresocket.net/your-document-id",
+  "isNew": false
+}
+```
+
+| Field    | Description                                                                       |
+| -------- | --------------------------------------------------------------------------------- |
+| `region` | The node region currently hosting this document                                   |
+| `url`    | The full WebSocket URL including the doc ID. Include this as your provider's URL. |
+| `isNew`  | `true` if no active session exists — connect to your preferred region             |
+
+```js
+async function resolveAndConnect(docId, getAccessToken) {
+  const token = await getAccessToken();
+
+  // Step 1: Discover the correct node
+  // You can call any regional node to perform the lookup
+  const res = await fetch(
+    `https://eu-central-1.wiresocket.net/discovery?documentName=${docId}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+
+  if (!res.ok) {
+    // 401 = invalid token, 400 = bad request — stop and check config
+    throw new Error(`Discovery failed: ${res.status}`);
+  }
+
+  const { url, isNew } = await res.json();
+
+  // Step 2: Resolve the node URL
+  // If isNew, no session exists yet — connect to your preferred region
+  const nodeUrl = url ?? "wss://eu-central-1.wiresocket.net";
+
+  // Step 3: Connect
+  const provider = new WebsocketProvider(nodeUrl, docId, ydoc, {
+    protocols: ["access_token", token],
+  });
+
+  return provider;
+}
+```
+
+<Warning>
+  A `401` or `400` response means a configuration problem — invalid token or
+  missing `documentName`. Do not retry automatically. Surface the error to the
+  developer.
+</Warning>
+
+### Connect and Catch
+
+If you prefer to skip the HTTP round trip entirely, connect directly to any regional node. If the region is wrong, WireSocket closes the connection with a `4009` code and the correct URL in the close reason — your client catches this and reconnects transparently.
+
+```js
+async function connectWithFallback(docId, getAccessToken) {
+  const token = await getAccessToken();
+
+  const provider = new WebsocketProvider(
+    "wss://eu-central-1.wiresocket.net", // connect to any region directly
+    docId,
+    ydoc,
+    { protocols: ["access_token", token] },
+  );
+
+  provider.ws.addEventListener("close", async (event) => {
+    if (event.code === 4009 && event.reason.startsWith("REDIRECT:")) {
+      const correctUrl = event.reason.replace("REDIRECT:", "");
+      const freshToken = await getAccessToken();
+      provider.destroy();
+
+      return new WebsocketProvider(correctUrl, docId, ydoc, {
+        protocols: ["access_token", freshToken],
+      });
+    }
+  });
+
+  return provider;
+}
+```
+
+---
+
+## Document ID Format
+
+Pass any string as your document ID. WireSocket handles isolation internally by prefixing it with `tenantId::appId::` before it reaches the storage layer.
+
+**Recommendations:**
+
+- Keep document IDs under **255 characters**
+- Use URL-safe characters — alphanumeric, hyphens, underscores
+
+```js
+// Good
+"my-document-123";
+"user_notes_abc";
+```
+
+---
+
+## Connecting Your Editor
+
+### TipTap
+
+```js
+import * as Y from "yjs";
+import { WebsocketProvider } from "y-websocket";
+import { Editor } from "@tiptap/core";
+import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
+
+const ydoc = new Y.Doc();
+
+const provider = new WebsocketProvider(
+  "wss://eu-central-1.wiresocket.net",
+  "your-document-id",
+  ydoc,
+  {
+    protocols: ["access_token", "YOUR_ACCESS_TOKEN"],
+  },
+);
+
+const editor = new Editor({
+  extensions: [
+    Collaboration.configure({ document: ydoc }),
+    CollaborationCursor.configure({ provider }),
+  ],
+});
+```
+
+---
+
+## Passing the Token
+
+Three methods are supported. All work in all regions.
+
+| Method                              | How                                                          |
+| ----------------------------------- | ------------------------------------------------------------ |
+| WebSocket Subprotocol (recommended) | `protocols: ['access_token', 'YOUR_ACCESS_TOKEN']`           |
+| Query Parameter                     | `wss://{region-code}.wiresocket.net?token=YOUR_ACCESS_TOKEN` |
+| Auth Header                         | `Authorization: Bearer YOUR_ACCESS_TOKEN`                    |
+
+The subprotocol method is preferred — it keeps the token out of server access logs and browser history.
+
+---
+
+## Token Expiry & Reconnection
+
+JWT validation happens **at handshake only**. Once connected, an expiring token does not drop an active session.
+
+When your token is close to expiry, reconnect with a fresh token:
+
+```js
+async function connectWithFreshToken(docId, getAccessToken) {
+  const token = await getAccessToken();
+
+  provider.destroy();
+
+  return new WebsocketProvider(
+    "wss://eu-central-1.wiresocket.net",
+    docId,
+    ydoc,
+    { protocols: ["access_token", token] },
+  );
+}
+```
+
+<Info>
+  Reconnecting re-validates the JWT against the JWKS endpoint and re-reads plan
+  limits from the token claims (`dbCode`). This is the correct way to pick up
+  plan changes or credential rotations.
+</Info>
