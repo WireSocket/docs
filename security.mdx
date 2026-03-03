@@ -1,0 +1,92 @@
+---
+title: "Security & Hardening"
+description: "An overview of the security architecture and isolation models powering the WireSocket platform."
+---
+
+WireSocket is engineered with a **Security-First** philosophy, focusing on total isolation, cryptographic integrity, and proactive defense-in-depth across both the Control Plane and Data Plane.
+
+---
+
+## 1. Authentication Infrastructure
+
+WireSocket uses a hardened OAuth2 implementation to manage access across the platform.
+
+### Standardized Flows
+
+- **Client Credentials**: Used for secure Machine-to-Machine (M2M) communication and Data Plane orchestration.
+- **Authorization Code**: For interactive user and dashboard access.
+- **Refresh Token**: For secure session extension without re-exposing sensitive credentials.
+
+### Token Security
+
+- **Short-Lived Access**: Tokens are limited to **15 minutes** by default, minimizing the attack window for compromised credentials.
+- **Asymmetric Signing**: All tokens are signed using **2048-bit RSA keys**.
+- **Least Privilege Scopes**: Access is strictly gated by specialized scopes (e.g., `WireSocket.API` for M2M) to ensure clients only have the permissions they need.
+
+---
+
+## 2. Multi-Tenant Cryptographic Isolation
+
+WireSocket enforces **Hard Isolation** at the cryptographic layer, ensuring that tenants never share security boundaries.
+
+### Per-Tenant Signing Keys
+
+Unlike platforms that use a single global signing key, WireSocket assigns every **Tenant** its own unique 2048-bit RSA key pair.
+
+- **Cryptographic Silos**: A compromise of one tenant's environment cannot lead to token forgery for another.
+- **Tenant-Specific JWKS**: Public keys are exposed via unique, tenant-specific Discovery endpoints (`/{tenantId}/.well-known/jwks`).
+
+---
+
+## 3. Key Management & Encryption
+
+We use enterprise-grade encryption and secure vaulting to manage sensitive cryptographic material.
+
+### Encryption at Rest
+
+All private keys and sensitive metadata are encrypted at rest using **industry-standard 256-bit encryption** and a secure, vault-backed master key. Keys are never stored in plaintext.
+
+### Key Versioning & Rotation
+
+Every encrypted key is tagged with a version identifier. This allows for:
+
+- **Seamless Rotation**: Master keys can be rotated without breaking existing data.
+- **Grace Periods**: During rotation, retired keys remain valid for a short window to prevent connection drops during propagation.
+- **Immediate Revocation**: In the event of an incident, keys can be revoked instantly, terminating all active sessions for that tenant globally.
+
+---
+
+## 4. Platform Integrity & Isolation
+
+Security is enforced at every layer of the stack, from API entry points to the WebSocket edge.
+
+### Identity & Permissions
+
+- **Separation of Concerns**: Human administrator roles are strictly isolated from Machine-to-Machine (M2M) client permissions.
+- **Atomic Validation**: A dedicated middleware layer validates tenant status for every request. Suspended or inactive tenants are blocked instantly at the platform edge.
+
+### Infrastructure Defense
+
+- **Distributed Coordination**: Critical security operations use distributed locks to ensure state changes are atomic across our global cluster.
+- **Rate Limiting**: Specialized policies protect sensitive endpoints (like authentication and account management) from brute-force and DDoS attempts.
+
+---
+
+## 5. Origin Security & Data Sovereignty
+
+### Origin-Based Whitelisting (Allowed Domains)
+
+Stolen tokens are made useless through **Allowed Domains**. The Data Plane node validates the browser's `Origin` header against claims baked directly into the JWT. Connections from unauthorized domains are rejected at the edge.
+
+### Data Sovereignty
+
+- **Regional Pinning**: Every App is geographically pinned to a specific region (e.g., `aws-us-east-1`).
+- **Data Sharding**: Document metadata is stored in isolated database shards localized to the app's region, ensuring compliance with local data residency requirements.
+
+---
+
+<Info>
+  **Audit Trail**: All major security actions—including tenant creation and key
+  revocation—generate distributed events, providing a comprehensive audit trail
+  for compliance and monitoring.
+</Info>

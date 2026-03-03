@@ -26,53 +26,53 @@ Within a Tenant, you can create multiple **Apps**. Each App represents a specifi
 
 - **Identity**: Each App holds its own unique `client_id` and `client_secret`.
 - **Data Residency**: Every App is pinned to a **License Region** (e.g., `aws-us-east-1`) during creation.
-- **Database isolation**: Separate from the real-time sync, each App is assigned a specific internal database instance (`DbCode`), ensuring your document metadata is geographically localized and isolated within Turso shards.
+- **Data Isolation**: Document metadata is stored in isolated, regional database shards, ensuring your data is geographically localized and cryptographically separated.
 
 ### 3. Plans
 
 A **Plan** defines the performance characteristics and usage limits for an App.
 
 - **Limits**: Controls maximum concurrent connections, document counts, and operations per minute (OPM).
-- **The "One Free" Rule**: Each Tenant is limited to **exactly one application on a Free Plan**. Additional applications require a paid subscription managed through Dodo Payments.
-- **Flexibility**: Plans can be upgraded or downgraded through the dashboard. Paid-to-paid transitions are prorated immediately.
+- **The "One Free" Rule**: Each Tenant is limited to **exactly one application on a Free Plan**. Additional applications require a paid subscription.
+- **Flexibility**: Plans can be upgraded or downgraded through the dashboard. Transition between paid tiers is handled seamlessly with prorated billing.
 
 ### 4. Nodes (Infrastructure Registry)
 
-The Control Plane acts as the **Global Registry** for the Data Plane's physical infrastructure.
+WireSocket maintains a **Global Registry** for its physical infrastructure to ensure high availability and intelligent routing.
 
-- **Node Management**: It maintains the registry of all active and inactive WebSocket nodes across the globe (e.g., `eu-central-1.wiresocket.net`).
-- **Regional Orchestration**: It exposes APIs to activate or deactivate nodes, enabling zero-downtime maintenance and fleet scaling.
-- **Discovery Backbone**: The Control Plane powers the [Discovery process](/data-plane/dataplane#document-discovery), allowing clients to resolve the correct physical node for any document.
+- **Node Management**: We manage a global fleet of WebSocket nodes (e.g., `eu-central-1.wiresocket.net`).
+- **Regional Orchestration**: The platform allows for zero-downtime maintenance and dynamic fleet scaling.
+- **Discovery Backbone**: Our infrastructure powers the [Discovery process](/data-plane/dataplane#document-discovery), resolving the best physical node for any document session in real-time.
 
 ---
 
 ## Security Enforcement
 
-The Control Plane is where you define the security boundaries that the Data Plane then enforces at the edge.
+WireSocket defines security boundaries at the management layer that are then enforced at the network edge.
 
 ### Allowed Domains
 
-To prevent **Token Theft**, you can whitelist up to 3 domains (e.g., `myapp.com`, `localhost:3000`).
+To prevent **Token Theft**, you can pin an application to up to 3 specific domains (e.g., `myapp.com`, `localhost:3000`).
 
-- **Baked-in security**: These domains are embedded directly into your JWT claims.
-- **Edge validation**: Data Plane nodes check the `Origin` header of every incoming connection against these claims. If they don't match, the connection is rejected.
+- **Baked-in Security**: These domains are embedded directly into your JWT claims.
+- **Edge Validation**: Data Plane nodes check the `Origin` header of every incoming connection against these claims. If they don't match, the connection is rejected instantly.
 
 ---
 
 ## The Token Lifecycle
 
-WireSocket uses a standard **OAuth 2 Machine-to-Machine (M2M)** flow. Your backend server exchanges its App credentials for a token, which is then passed to your frontend clients.
+WireSocket uses a standard **OAuth 2 Machine-to-Machine (M2M)** flow. Your backend server exchanges its App credentials for a token, which is then passed to your collaborative clients.
 
-### Security First: Refresh Tokens
+### Best Practice: Token Rotation
 
-WireSocket supports **Refresh Tokens** out of the box to minimize the exposure of your sensitive credentials.
+We support **Refresh Tokens** to minimize the exposure of your sensitive credentials.
 
-1. **Access Token**: Short-lived (15 minutes). Used by your clients to connect to the Data Plane.
+1. **Access Token**: Short-lived. Used by your clients to connect to the Data Plane.
 2. **Refresh Token**: Long-lived. Used by your backend to request new Access Tokens without needing to re-send the `client_secret`.
 
 <Info>
-  **Best Practice**: Store your `client_secret` in a secure vault (like Doppler
-  or AWS Secrets Manager). Your auth service should only use the secret once
-  during a "cold start" to get a token pair, then use the Refresh Token for all
-  subsequent rotations.
+  **Pro Tip**: Your authentication service should fetch the `client_secret` once
+  during a "cold start" to obtain a token pair, then use the Refresh Token for
+  all subsequent rotations. This allows you to purge the sensitive secret from
+  active memory.
 </Info>
