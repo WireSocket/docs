@@ -1,0 +1,99 @@
+---
+title: "Security & Hardening"
+description: "Understand the enterprise-grade security architecture and isolation models of the WireSocket Control Plane."
+---
+
+The WireSocket Control Plane is engineered with a **Security-First** philosophy, focusing on total isolation, cryptographic integrity, and proactive defense-in-depth.
+
+---
+
+## 1. OAuth2 & OpenIddict Infrastructure
+
+The Control Plane leverages [OpenIddict](https://documentation.openiddict.com/) to provide a hardened OAuth2/OpenID Connect implementation.
+
+### Standardized Flows
+
+- **Client Credentials**: Used for secure Machine-to-Machine (M2M) communication and Data Plane orchestration.
+- **Authorization Code**: For interactive user and dashboard access.
+- **Refresh Token**: For secure session extension without re-exposing sensitive credentials.
+
+### Hardened Tokens
+
+- **Short-Lived Access**: Tokens are limited to **15 minutes** by default, minimizing the attack window for compromised credentials.
+- **Asymmetric Signing**: All tokens are signed using **2048-bit RSA keys**.
+- **Specialized Scopes**:
+  - `WireSocket`: For dashboard and user-level management.
+  - `WireSocket.API`: Reserved for high-privilege M2M and Data Plane operations.
+
+---
+
+## 2. Multi-Tenant Cryptographic Isolation
+
+WireSocket enforces **Hard Isolation** at the cryptographic layer, ensuring that tenants are never sharing the same security boundaries.
+
+### Per-Tenant Signing Keys
+
+Unlike traditional SaaS platforms that use a single global signing key, WireSocket assigns every **Tenant** its own unique 2048-bit RSA key pair.
+
+- **Cryptographic Silos**: A compromise of one tenant's environment cannot lead to token forgery for another.
+- **Tenant-Specific JWKS**: Public keys are exposed via unique, tenant-specific Discovery endpoints (`/{tenantId}/.well-known/jwks`).
+
+---
+
+## 3. Advanced Key Management (KMS)
+
+We implement a sophisticated **Ledger-Based Encryption** strategy for managing tenant-specific signing keys.
+
+### Double Encryption
+
+Private keys are never stored in plain text. They are encrypted at rest using an **AES-256 Master Key** retrieved from a secure vault (e.g., Infiscal).
+
+### Master Key Versioning
+
+Every encrypted key in the database is tagged with a `MasterKeyVersion`. This allows the system to:
+
+- Rotate Master Keys in the vault without breaking legacy data.
+- Maintain a clear audit trail of which key version was used for encryption.
+
+### Rotation & Revocation
+
+- **24-Hour Grace Period**: During proactive rotation, retired keys remain valid for 24 hours to prevent propagation errors.
+- **Emergency Revocation**: In the event of an incident, keys can be revoked immediately, terminating all active sessions for that tenant globally.
+
+---
+
+## 4. Granular Permissions (ABP Integrated)
+
+Control Plane security is managed through a multi-layered permission system integrated with the **ABP Framework**.
+
+### Identity Isolation
+
+- **Human Administrators**: Assigned permissions via Roles for granular dashboard management.
+- **Machine Clients**: Assigned specific permissions at the Client level (e.g., `DataPlane.CredentialAccess`) which are never granted to human accounts.
+
+### Performance & Atomic Checks
+
+- **Distributed Locking**: Critical operations like secret regeneration or key rotation use **Redis-backed distributed locks** to prevent race conditions.
+- **Status Middleware**: A dedicated layer validates the `IsActive` status of a tenant for every request. Suspended tenants are blocked instantly at the API entry point.
+
+---
+
+## 5. Origin Security & Data Sovereignty
+
+### Origin-Based Whitelisting
+
+Stolen tokens are made useless through **Allowed Domains**. The Data Plane node validates the browser's `Origin` header against claims baked directly into the JWT.
+
+### Data Sovereignty
+
+- **License Region Pinning**: Every App is geographically pinned to a region (e.g., `aws-eu-west-1`).
+- **Regional Sharding**: Document metadata is stored in isolated **Turso shards** localized to the app's region, ensuring compliance with data residency laws like GDPR.
+
+---
+
+<Info>
+  **Security Audit Ready**: All major security actions—from tenant creation to
+  key revocation—publish **Distributed Events** (`TenantStatusChangedEto`,
+  `SigningKeyRotatedEvent`), providing a comprehensive audit trail for
+  enterprise compliance.
+</Info>

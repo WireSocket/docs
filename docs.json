@@ -50,6 +50,7 @@
             "group": "Control Plane",
             "pages": [
               "control-plane/overview",
+              "control-plane/security",
               "control-plane/onboarding",
               "control-plane/license-regions",
               "control-plane/app-setup",
