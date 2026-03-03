@@ -1,0 +1,170 @@
+---
+title: "Migrating to Self-Hosted"
+description: "A technical guide for transitioning from managed WireSocket to a self-hosted Hocuspocus deployment."
+---
+
+While WireSocket provides a globally distributed, zero-maintenance Data Plane, we understand that some organizations may eventually require a self-hosted solution. This guide covers the technical steps to migrate to a standalone **Hocuspocus** deployment.
+
+<Warning>
+  **The Operational Reality of Self-Hosting** Managing a real-time WebSocket
+  infrastructure is significantly more complex than standard HTTP services.
+  Before migrating, consider these "hidden" costs of self-hosting: - **Uptime &
+  State**: WebSockets require persistent connections. Any server reload or brief
+  network glitch drops all active collaborative sessions. - **High Availability
+  (HA)**: To avoid downtime during maintenance, you must maintain at least **3
+  nodes** in a cluster with complex load balancing. - **Horizontal Scaling**: To
+  keep multiple nodes in sync, you must manage a high-performance **Redis**
+  architecture. - **Memory Management**: Y.js operations thrive on RAM. Managing
+  millions of CRDT operations requires aggressive memory tuning and constant
+  monitoring to prevent OOM (Out of Memory) crashes. - **Security Ops**: You
+  become responsible for manual SSL/TLS certificate rotation, firewall
+  orchestration, and implementing custom JWT validation logic.
+</Warning>
+
+---
+
+## Prerequisites
+
+- **Node.js 22+**: Required for the latest Hocuspocus features.
+- **WebSocket-aware Reverse Proxy**: Nginx or HAProxy configured for standard headers (`Upgrade`, `Connection`).
+- **Persistence Storage**: A database (SQLite/Postgres) or S3-compatible bucket for long-term document storage.
+
+---
+
+## Deployment Options
+
+### 1. Quick Start (CLI)
+
+The fastest way to test your self-hosted environment using the Hocuspocus CLI.
+
+```bash
+# Install CLI globally
+npm install -g @hocuspocus/cli
+
+# Start with SQLite persistence
+hocuspocus --port 1234 --sqlite ./data/documents.sqlite
+```
+
+### 2. Standalone Server
+
+Create a custom entry point to manage your own extensions and authentication logic.
+
+```typescript
+import { Logger } from "@hocuspocus/extension-logger";
+import { SQLite } from "@hocuspocus/extension-sqlite";
+import { Server } from "@hocuspocus/server";
+
+const server = new Server({
+  port: 1234,
+  address: "0.0.0.0",
+
+  extensions: [
+    new Logger(),
+    new SQLite({
+      database: "./data/documents.sqlite",
+    }),
+  ],
+
+  // Custom authentication logic
+  async onAuthenticate(data) {
+    if (data.token !== "your-secret-token") {
+      throw new Error("Invalid token");
+    }
+  },
+});
+
+server.listen();
+```
+
+### 3. Framework Integration
+
+If you are already running an **Express** or **Hono** backend, you can integrate Hocuspocus directly.
+
+<Tabs>
+  <Tab title="Express.js">
+```typescript
+import { Hocuspocus } from "@hocuspocus/server";
+import express from "express";
+import expressWebsockets from "express-ws";
+
+const hocuspocus = new Hocuspocus({});
+const { app } = expressWebsockets(express());
+
+app.ws("/collaboration", (websocket, request) => {
+hocuspocus.handleConnection(websocket, request);
+});
+
+app.listen(1234);
+
+````
+  </Tab>
+  <Tab title="Hono">
+```typescript
+import { Hocuspocus } from "@hocuspocus/server";
+import { Hono } from "hono";
+import { createNodeWebSocket } from "@hono/node-ws";
+
+const hocuspocus = new Hocuspocus({});
+const app = new Hono();
+const { upgradeWebSocket } = createNodeWebSocket({ app });
+
+app.get(
+  "/ws",
+  upgradeWebSocket((c) => ({
+    onOpen(_evt, ws) {
+      hocuspocus.handleConnection(ws.raw, c.req.raw, {});
+    },
+  })),
+);
+````
+
+  </Tab>
+</Tabs>
+
+---
+
+## Scaling: Redis & Clustering
+
+For production environments requiring high availability, you must Use the **Redis Extension** to synchronize state across multiple server instances.
+
+```typescript
+import { Redis } from "@hocuspocus/extension-redis";
+
+new Server({
+  extensions: [
+    new Redis({
+      host: "your-redis-server",
+      port: 6379,
+    }),
+    // ... other extensions
+  ],
+});
+```
+
+---
+
+## Client-Side Migration
+
+Update your collaborative provider to point away from the WireSocket Edge and toward your new internal endpoint.
+
+```javascript
+// Before (Managed WireSocket)
+const socket = new HocuspocusProviderWebsocket({
+  url: "wss://eu-central-1.wiresocket.net",
+});
+
+// After (Self-Hosted)
+const socket = new HocuspocusProviderWebsocket({
+  url: "wss://your-domain.com/ws",
+});
+```
+
+---
+
+## Migration Checklist
+
+1. [ ] **Select Persistence Strategy**: SQLite (simple), Postgres (standard), or S3 (scalable).
+2. [ ] **Configure Reverse Proxy**: Ensure sticky sessions if not using Redis yet.
+3. [ ] **Implement Security**: Port your WireSocket JWT logic to the `onAuthenticate` hook.
+4. [ ] **HA Deployment**: Deploy across at least 2 availability zones.
+5. [ ] **Monitoring**: Set up alerts for WebSocket connection spikes and OOM events.
