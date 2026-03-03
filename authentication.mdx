@@ -3,7 +3,7 @@ title: "Authentication"
 description: "How WireSocket issues and validates JWT tokens for dataplane access."
 ---
 
-WireSocket uses **OAuth 2 Machine-to-Machine (M2M) client credentials flow** to authenticate applications. There is no interactive or user-facing login — all authentication happens server-side using your app's `client_id` and `client_secret`.
+WireSocket primarily uses **OAuth 2 Machine-to-Machine (M2M) client credentials flow** to authenticate applications. For interactive management (like the dashboard), the platform uses the **Resource Owner Password** flow through trusted applications.
 
 ---
 

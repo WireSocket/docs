@@ -61,7 +61,10 @@ To prevent **Token Theft**, you can pin an application to up to 3 specific domai
 
 ## The Token Lifecycle
 
-WireSocket uses a standard **OAuth 2 Machine-to-Machine (M2M)** flow. Your backend server exchanges its App credentials for a token, which is then passed to your collaborative clients.
+WireSocket uses standard **OAuth 2** flows for account management and synchronization.
+
+- **Machine-to-Machine (M2M)**: Your backend server exchanges App credentials for a token, which is then passed to collaborative clients.
+- **Resource Owner Password**: For interactive dashboard access using trusted identifiers (`client_id` + `client_secret`).
 
 ### Best Practice: Token Rotation
 

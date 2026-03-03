@@ -14,7 +14,7 @@ WireSocket uses a hardened OAuth2 implementation to manage access across the pla
 ### Standardized Flows
 
 - **Client Credentials**: Used for secure Machine-to-Machine (M2M) communication and Data Plane orchestration.
-- **Authorization Code**: For interactive user and dashboard access.
+- **Resource Owner Password**: For interactive dashboard access using trusted identifiers (`client_id` + `client_secret`).
 - **Refresh Token**: For secure session extension without re-exposing sensitive credentials.
 
 ### Token Security
@@ -63,7 +63,7 @@ Security is enforced at every layer of the stack, from API entry points to the W
 ### Identity & Permissions
 
 - **Separation of Concerns**: Human administrator roles are strictly isolated from Machine-to-Machine (M2M) client permissions.
-- **Atomic Validation**: A dedicated middleware layer validates tenant status for every request. Suspended or inactive tenants are blocked instantly at the platform edge.
+- **Request Integrity**: Every request is validated against the platform's current security state to ensure only authorized tokens from active applications are permitted.
 
 ### Infrastructure Defense
 
