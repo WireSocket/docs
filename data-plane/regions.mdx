@@ -9,10 +9,17 @@ WireSocket operates a globally distributed network of WebSocket Nodes. While you
 
 ## Regional Coding
 
-| Type                 | Format                  | Example         |
-| :------------------- | :---------------------- | :-------------- |
-| **License Region**   | `aws-{provider-region}` | `aws-eu-west-1` |
-| **WebSocket Region** | `{region-code}`         | `eu-central-1`  |
+| Type                 | Format                       | Example         |
+| :------------------- | :--------------------------- | :-------------- |
+| **License Region**   | `aws-{provider-region}`      | `aws-eu-west-1` |
+| **WebSocket Region** | `{region-name}-{cluster-id}` | `eu-central-1`  |
+
+### Cluster Numbering
+
+Unlike License Regions, WebSocket regions include a trailing number (e.g., `-1`, `-2`). This represents a specific **Sync Cluster** within that geographic area.
+
+- **Domain Assignment**: Each cluster is assigned its own unique subdomain (e.g., `eu-central-1.wiresocket.net`).
+- **Scaling**: As demand grows, WireSocket may deploy additional clusters in the same region (`eu-central-2`, etc.) to provide horizontal scale and isolation.
 
 <Important>
   **Always use the non-prefixed code for WebSocket connection URLs and Discovery

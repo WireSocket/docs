@@ -22,11 +22,13 @@ WireSocket has two region concepts you need to understand:
 | `aws-us-east-2`      | US East (Ohio)        |
 | `aws-us-west-2`      | US West (Oregon)      |
 
-**WebSocket Regions** — The standard cloud regions where your editors connect for real-time sync. Each region has its own URL:
+**WebSocket Regions** — The standard cloud regions where your editors connect for real-time sync. Each region maps to a specific **Sync Cluster** and has its own URL:
 
 ```
-wss://{region-code}.wiresocket.net
+wss://{region-name}-{cluster-id}.wiresocket.net
 ```
+
+Example: `eu-central-1` (Region: Europe Central, Cluster: 1).
 
 Currently available WebSocket regions and their URLs are listed in your [dashboard](https://app.wiresocket.com).
 
