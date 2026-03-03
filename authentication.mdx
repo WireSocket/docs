@@ -50,37 +50,43 @@ The access token is a signed JWT. Your backend can decode it to inspect the clai
 ```json
 {
   "iss": "https://api.wiresocket.com",
-  "sub": "YOUR_CLIENT_ID",
-  "aud": "wiresocket",
+  "sub": "prod_wiresocket_abc123",
+  "aud": "WireSocket.API",
   "scope": "WireSocket.API offline_access",
 
   "tenantid": "3f9a6c6e-2d9e-4c3e-a1f1-3b2c99e6b111",
   "appId": "7b1c0d8c-2d01-4c7c-b3b1-111aaa222bbb",
   "licenseRegionCode": "aws-us-east-1",
-  "dbCode": "aws-us-east-1",
+  "dbCode": "shard-01-us-east-1",
 
   "allowed_domain_1": "example.com",
   "allowed_domain_2": "staging.example.com",
   "allowed_domain_3": "localhost:3000",
 
-  "limits": "{\"maxConnections\":100,\"maxDocuments\":500,\"maxUsersPerDoc\":50,\"opsPerMinute\":10000}",
+  "limits": {
+    "maxConnections": 100,
+    "maxDocuments": 500,
+    "maxUsersPerDoc": 50,
+    "opsPerMinute": 10000
+  },
 
   "exp": 1740470000,
-  "iat": 1740466400
+  "iat": 1740466400,
+  "jti": "unique-token-id"
 }
 ```
 
 ### Claim Reference
 
-| Claim                  | Description                                                        |
-| ---------------------- | ------------------------------------------------------------------ |
-| `sub`                  | Your `client_id`                                                   |
-| `tenantid`             | Your tenant GUID — used for multi-tenant isolation                 |
-| `appId`                | Your application GUID                                              |
-| `licenseRegionCode`    | The base region for your metadata (e.g., `aws-us-east-1`)          |
-| `dbCode`               | The specific database shard where your document metadata is stored |
-| `allowed_domain_1/2/3` | Domains permitted to connect to the dataplane                      |
-| `limits`               | Stringified JSON containing your plan limits                       |
+| Claim                  | Description                                                         |
+| ---------------------- | ------------------------------------------------------------------- |
+| `sub`                  | Your `client_id`                                                    |
+| `tenantid`             | Your tenant GUID — used for multi-tenant isolation                  |
+| `appId`                | Your application GUID                                               |
+| `licenseRegionCode`    | The base region for your metadata (e.g., `aws-us-east-1`)           |
+| `dbCode`               | The specific database shard identifier (e.g., `shard-01-us-east-1`) |
+| `allowed_domain_1/2/3` | Domains permitted to connect to the dataplane                       |
+| `limits`               | Native JSON object containing your plan limits                      |
 
 ### Plan Limits
 
