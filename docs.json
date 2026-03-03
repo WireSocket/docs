@@ -1,13 +1,32 @@
 {
   "theme": "mint",
+  "name": "WireSocket",
+  "description": "Real-time Yjs sync infrastructure for collaborative applications. Stateless, edge-deployed WebSocket servers with global routing, JWT auth, and zero vendor lock-in. You own the data.",
   "seo": {
     "metatags": {
-        "canonical": "https://docs.wiresocket.com"
-    }
+      "canonical": "https://docs.wiresocket.com"
+    },
+    "indexing": "navigable"
   },
-
-  "name": "WireSocket",
-  "description": "Real-time Yjs sync infrastructure for collaborative applications. Stateless, edge-deployed WebSocket servers with global routing, JWT auth, and zero vendor lock-in.",
+  "appearance": {
+    "default": "dark"
+  },
+  "styling": {
+    "eyebrows": "breadcrumbs",
+    "latex": true
+  },
+  "icons": {
+    "library": "fontawesome"
+  },
+  "background": {
+    "decoration": "windows"
+  },
+  "interaction": {
+    "drilldown": true
+  },
+  "metadata": {
+    "timestamp": true
+  },
   "colors": {
     "primary": "#0047AB",
     "light": "#0058BC",
@@ -123,28 +142,5 @@
       "github": "https://github.com/WireSocket",
       "linkedin": "https://linkedin.com/company/wiresocket"
     }
-  },
-  "seo": {
-    "indexing": "navigable"
-  },
-  "description": "Real-time Yjs sync infrastructure for collaborative applications. Stateless, edge-deployed WebSocket servers with global routing, JWT auth, and zero vendor lock-in. You own the data.",
-  "interaction": {
-    "drilldown": true
-  },
-  "metadata": {
-    "timestamp": true
-  },
-  "appearance": {
-    "default": "dark"
-  },
-  "styling": {
-    "eyebrows": "breadcrumbs",
-    "latex": true
-  },
-  "icons": {
-    "library": "fontawesome"
-  },
-  "background": {
-    "decoration": "windows"
   }
 }
