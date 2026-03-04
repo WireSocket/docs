@@ -1,0 +1,54 @@
+---
+title: "Health"
+description: "Tri-state health check used by load balancers and monitoring systems."
+---
+
+The Health endpoint provides a simple, unauthenticated liveness check for WireSocket Data Plane nodes. It is used by load balancers (e.g., Bunny DNS) and monitoring systems to determine whether a node should receive traffic.
+
+---
+
+## Endpoints
+
+Both paths return the same response:
+
+```http
+GET https://{region-code}.wiresocket.net/health
+GET https://{region-code}.wiresocket.net/
+```
+
+---
+
+## Authentication
+
+**None required.** This endpoint is publicly accessible to support load balancer health probes.
+
+---
+
+## Response
+
+The endpoint returns one of two HTTP status codes based on the node's internal state:
+
+| HTTP Status | State                     | Description                                                                                   |
+| :---------- | :------------------------ | :-------------------------------------------------------------------------------------------- |
+| **200**     | `HEALTHY`                 | The node is operating normally and can accept new connections.                                |
+| **503**     | `DEGRADED` / `OVERLOADED` | The node is under pressure or Redis is unreachable. Load balancers should route traffic away. |
+
+### Response Body
+
+```json
+{
+  "status": "healthy",
+  "timestamp": "2026-03-04T06:00:00.000Z"
+}
+```
+
+| Field       | Type   | Description                                                 |
+| :---------- | :----- | :---------------------------------------------------------- |
+| `status`    | string | Current node state: `healthy`, `degraded`, or `overloaded`. |
+| `timestamp` | string | ISO 8601 UTC timestamp of the check.                        |
+
+---
+
+## Rate Limiting
+
+This endpoint uses the `HEALTH` rate limit policy, which is more permissive than standard endpoints to allow frequent polling by infrastructure services.

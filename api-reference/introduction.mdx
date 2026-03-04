@@ -1,9 +1,9 @@
 ---
 title: "API Reference"
-description: "WireSocket dataplane HTTP and WebSocket endpoints."
+description: "WireSocket Data Plane HTTP and WebSocket endpoints."
 ---
 
-The WireSocket dataplane exposes three endpoints for tenant applications. All endpoints are available in every deployed region.
+The WireSocket Data Plane exposes HTTP and WebSocket endpoints across every deployed region. Endpoints are grouped into **public** (for your application) and **infrastructure** (for monitoring and administration).
 
 ## Base URLs
 
@@ -18,9 +18,9 @@ Replace `{region-code}` with any available node cluster (e.g., `eu-central-1`).
 
 ## Authentication
 
-All endpoints require a valid JWT access token issued by the WireSocket control plane. See [Authentication](/authentication) for how to obtain and refresh tokens.
+All public endpoints require a valid JWT access token issued by the WireSocket Control Plane. See [Authentication](/authentication) for how to obtain and refresh tokens. Infrastructure endpoints (`/health`, `/metrics`) are unauthenticated to support load balancer probes and Prometheus scraping.
 
-## Endpoints
+## Public Endpoints
 
 <CardGroup cols={1}>
   <Card
@@ -39,6 +39,19 @@ All endpoints require a valid JWT access token issued by the WireSocket control 
   <Card title="Usage" icon="chart-line" href="/api-reference/usage">
     Get a real-time snapshot of your application's current concurrent
     connections and active documents across the global network.
+  </Card>
+</CardGroup>
+
+## Infrastructure Endpoints
+
+<CardGroup cols={1}>
+  <Card title="Health" icon="heart-pulse" href="/api-reference/health">
+    Tri-state liveness check used by load balancers and DNS failover. Returns
+    200 (healthy) or 503 (degraded/overloaded).
+  </Card>
+  <Card title="Metrics" icon="chart-simple" href="/api-reference/metrics">
+    Prometheus-compatible telemetry for node-level observability. Integrate with
+    Grafana, Datadog, or any Prometheus-compatible stack.
   </Card>
 </CardGroup>
 

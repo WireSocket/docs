@@ -1,0 +1,55 @@
+---
+title: "Metrics"
+description: "Prometheus-compatible metrics endpoint for node-level observability."
+---
+
+The Metrics endpoint exposes Prometheus-compatible metrics for each WireSocket Data Plane node. Use this endpoint to integrate WireSocket node telemetry into your existing monitoring stack (e.g., Grafana, Datadog, Prometheus).
+
+---
+
+## Endpoint
+
+```http
+GET https://{region-code}.wiresocket.net/metrics
+```
+
+---
+
+## Authentication
+
+**None required.** This endpoint is publicly accessible to support scraping by external monitoring systems.
+
+<Warning>
+  While unauthenticated, this endpoint is rate limited to prevent abuse. Metrics
+  are node-level — they reflect the state of the specific node you query, not
+  your application's global state. For application-level usage, use the
+  [Usage](/api-reference/usage) endpoint instead.
+</Warning>
+
+---
+
+## Response
+
+Returns metrics in the standard [Prometheus text exposition format](https://prometheus.io/docs/instrumenting/exposition_formats/):
+
+```
+# HELP wiresocket_connections_total Total active WebSocket connections
+# TYPE wiresocket_connections_total gauge
+wiresocket_connections_total 247
+
+# HELP wiresocket_documents_active Number of active document sessions
+# TYPE wiresocket_documents_active gauge
+wiresocket_documents_active 42
+
+# HELP nodejs_heap_size_used_bytes Process heap size used in bytes
+# TYPE nodejs_heap_size_used_bytes gauge
+nodejs_heap_size_used_bytes 85345280
+```
+
+The exact metrics available depend on the `prom-client` configuration and may include both WireSocket-specific and Node.js runtime metrics.
+
+---
+
+## Rate Limiting
+
+This endpoint uses the `HEALTH` rate limit policy. A typical Prometheus scrape interval of 15–30 seconds is well within limits.
