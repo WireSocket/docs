@@ -3,7 +3,7 @@ title: "Introduction"
 description: "The scalable WebSocket sync infrastructure for collaborative applications."
 ---
 
-WireSocket is a **stateless, edge-deployed sync infrastructure** for collaborative applications. It handles real-time Yjs document synchronization across globally distributed nodes — without storing your data.
+WireSocket is a **stateless, edge-deployed sync infrastructure** for collaborative applications. It handles real-time Yjs document synchronization across globally distributed nodes without storing your data.
 
 You own the data. We own the pipes.
 
@@ -47,20 +47,12 @@ WireSocket speaks the Yjs sync protocol. Any library or editor that supports Yjs
 - ❌ Not a lock-in strategy
 
 If you stop using WireSocket, change the WebSocket URL. Your documents are in your database.
+
 ## Zero Vendor Lock-In
 
 WireSocket is just a WebSocket endpoint. Your documents live in your database, your auth lives in your system, and your editor stays exactly as it is.
 
-Migrating away from WireSocket means changing one URL. That's it.
-```js
-// Today
-const provider = new WebsocketProvider('wss://ws.wiresocket.com', docId, ydoc)
-
-// Self-hosted or switched provider
-const provider = new WebsocketProvider('wss://your-own-server.com', docId, ydoc)
-```
-
-No data export requests. No migration tools. No lock-in by design.
+Migrating away from WireSocket means changing one URL. That's it. If you'd like to know how to migrate, refer to this [page](/data-plane/self-hosting). No data export requests. No migration tools. No lock-in by design.
 
 We stay competitive by being good infrastructure, not by making it painful to leave.
 
@@ -72,5 +64,6 @@ We stay competitive by being good infrastructure, not by making it painful to le
   href="/quickstart"
   horizontal
 >
-  Create an OAuth 2 application, generate an access token, and sync your first document.
+  Create an OAuth 2 application, generate an access token, and sync your first
+  document.
 </Card>
