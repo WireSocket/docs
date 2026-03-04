@@ -87,12 +87,14 @@
         "groups": [
           {
             "group": "Overview",
+            "icon": "book-open",
             "pages": [
               "api-reference/introduction"
             ]
           },
           {
             "group": "Endpoints",
+            "icon": "code",
             "pages": [
               "api-reference/discovery",
               "api-reference/websocket",
