@@ -43,6 +43,45 @@ curl -X POST https://api.wiresocket.com/connect/token \
 
 ---
 
+## Required Scopes & Audience
+
+The WireSocket Data Plane strictly enforces identity verification using the standard `aud` (Audience) and `scope` claims. Your JWT must meet these criteria or the connection will be rejected with a `401 Unauthorized` error.
+
+### 1. Audience Enforcement
+
+The `aud` claim must be exactly `WireSocket.API`. This ensures the token was intended for the Data Plane and not for another service.
+
+```json
+{
+  "aud": "WireSocket.API"
+}
+```
+
+### 2. Scope Validation
+
+The token must include `WireSocket.API` in either the `scope` or `scp` claim. This claim is typically a space-delimited string.
+
+```json
+{
+  "scope": "WireSocket.API offline_access"
+}
+```
+
+The Data Plane validates this by splitting the string and checking for the required value. If neither `scope` nor `scp` contains `WireSocket.API`, authentication fails.
+
+### 3. Client Implementation
+
+When your backend requests a token from the Control Plane using the `client_credentials` grant, you **must** request the `WireSocket.API` scope explicitly:
+
+```bash
+curl -X POST https://api.wiresocket.com/connect/token \
+  -d "grant_type=client_credentials" \
+  -d "scope=WireSocket.API" \
+  ...
+```
+
+---
+
 ## JWT Claims
 
 The access token is a signed JWT. Your backend can decode it to inspect the claims — the dataplane reads these directly with no database lookup.

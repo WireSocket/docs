@@ -12,6 +12,14 @@ Every App created in the WireSocket Control Plane is assigned a unique `client_i
 3.  **Capture Credentials**: Once created, you will see your `client_id` and `client_secret`. **Copy them immediately.**
 
 <Warning>
+  **Important**: After creating your app, you must immediately **Assign a Plan**
+  (even the Free tier). WireSocket's authentication server requires an active
+  plan to bake resource limits (e.g., max connections, operations per minute)
+  into your JWT access tokens. Without an assigned plan, your application will
+  be unable to connect to the Data Plane.
+</Warning>
+
+<Warning>
   The **License Region** is fixed at creation. It cannot be changed later
   because your data is physically provisioned in that region's database shard.
 </Warning>
