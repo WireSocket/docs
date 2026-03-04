@@ -98,13 +98,7 @@
             "pages": [
               "api-reference/discovery",
               "api-reference/websocket",
-              "api-reference/usage"
-            ]
-          },
-          {
-            "group": "Infrastructure",
-            "icon": "server",
-            "pages": [
+              "api-reference/usage",
               "api-reference/health",
               "api-reference/metrics"
             ]

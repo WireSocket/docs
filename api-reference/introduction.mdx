@@ -20,7 +20,7 @@ Replace `{region-code}` with any available node cluster (e.g., `eu-central-1`).
 
 All public endpoints require a valid JWT access token issued by the WireSocket Control Plane. See [Authentication](/authentication) for how to obtain and refresh tokens. Infrastructure endpoints (`/health`, `/metrics`) are unauthenticated to support load balancer probes and Prometheus scraping.
 
-## Public Endpoints
+## Endpoints
 
 <CardGroup cols={1}>
   <Card
@@ -40,11 +40,6 @@ All public endpoints require a valid JWT access token issued by the WireSocket C
     Get a real-time snapshot of your application's current concurrent
     connections and active documents across the global network.
   </Card>
-</CardGroup>
-
-## Infrastructure Endpoints
-
-<CardGroup cols={1}>
   <Card title="Health" icon="heart-pulse" href="/api-reference/health">
     Tri-state liveness check used by load balancers and DNS failover. Returns
     200 (healthy) or 503 (degraded/overloaded).
