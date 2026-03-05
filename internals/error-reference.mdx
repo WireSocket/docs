@@ -1,6 +1,6 @@
 ---
 title: "Error Reference"
-description: "Complete reference for WireSocket WebSocket close codes and Control Plane HTTP errors."
+description: "Complete reference for WireSocket WebSocket close codes and Dashboard API errors."
 ---
 
 ## WebSocket Close Codes
@@ -21,7 +21,7 @@ WireSocket uses the `4000–4999` private use range to provide specific, actiona
 
 ---
 
-## Control Plane HTTP Errors
+## Dashboard API Errors
 
 Errors returned by `api.wiresocket.com` for token and management API requests.
 
@@ -30,8 +30,8 @@ Errors returned by `api.wiresocket.com` for token and management API requests.
 | `400 Bad Request`         | Missing or malformed request parameters          | Check required fields — `grant_type`, `client_id`, `documentName`, etc. Do not retry automatically.                       |
 | `401 Unauthorized`        | API key or token is missing or invalid           | Verify your `client_id` and `client_secret`. Re-authenticate if needed.                                                   |
 | `403 Forbidden`           | Your account lacks permission for this operation | Check your plan supports this feature. Contact support if unexpected.                                                     |
-| `429 Too Many Requests`   | Control Plane management API rate limit hit      | Back off and retry with exponential backoff. Do not hammer the endpoint.                                                  |
-| `503 Service Unavailable` | Control Plane is under maintenance               | Use the dataplane directly with a cached JWT. Monitor [status.wiresocket.com](https://status.wiresocket.com) for updates. |
+| `429 Too Many Requests`   | Dashboard management API rate limit hit          | Back off and retry with exponential backoff. Do not hammer the endpoint.                                                  |
+| `503 Service Unavailable` | Dashboard is under maintenance                   | Use the dataplane directly with a cached JWT. Monitor [status.wiresocket.com](https://status.wiresocket.com) for updates. |
 
 ---
 

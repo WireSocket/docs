@@ -71,7 +71,7 @@ The Data Plane validates this by splitting the string and checking for the requi
 
 ### 3. Client Implementation
 
-When your backend requests a token from the Control Plane using the `client_credentials` grant, you **must** request the `WireSocket.API` scope explicitly:
+When your backend requests a token from the **Dashboard** using the `client_credentials` grant, you **must** request the `WireSocket.API` scope explicitly:
 
 ```bash
 curl -X POST https://api.wiresocket.com/connect/token \
@@ -218,7 +218,7 @@ Each app supports up to **3 allowed domains**. This is a critical security featu
 
 ### Configuration Rules
 
-- **Normalization**: The Control Plane automatically strips protocols (`https://`) and trailing slashes. Entering `https://myapp.com/` results in `myapp.com`.
+- **Normalization**: The **Dashboard** automatically strips protocols (`https://`) and trailing slashes. Entering `https://myapp.com/` results in `myapp.com`.
 - **Development Support**: You can add `localhost` or `localhost:port` to your slots during development.
 - **Strict Format**: Domains are validated against standard regex patterns before saving.
 

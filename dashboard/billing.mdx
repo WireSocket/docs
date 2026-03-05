@@ -12,7 +12,7 @@ Every App in WireSocket must be linked to a **Plan**. The Plan determines the re
 To support developers while maintaining system stability, WireSocket offers a generous Free tier with the following rule:
 
 - **Limit**: Each **Tenant** is allowed exactly **one** application on a Free plan.
-- **Enforcement**: If you attempt to assign a Free plan to a second App, the Control Plane will block the request. You must either upgrade the existing Free app to a Paid tier or delete it before creating a new one.
+- **Enforcement**: If you attempt to assign a Free plan to a second App, the **Dashboard** will block the request. You must either upgrade the existing Free app to a Paid tier or delete it before creating a new one.
 
 ---
 
@@ -24,7 +24,7 @@ You can change an App's plan at any time through the **Plans** tab in the dashbo
 
 1.  **Selection**: Choose your new target Plan.
 2.  **Payment (Paid Plans)**: If moving to a Paid plan for the first time, you will be redirected to our secure checkout (powered by Dodo Payments) to provide billing details.
-3.  **Synchronization**: Once the plan is confirmed, the Control Plane uses distributed locking to safely update your App's metadata and push the new limits to the Data Plane instantly.
+3.  **Synchronization**: Once the plan is confirmed, the **Dashboard** uses distributed locking to safely update your App's metadata and push the new limits to the Data Plane instantly.
 
 ---
 

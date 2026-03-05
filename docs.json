@@ -49,14 +49,14 @@
             ]
           },
           {
-            "group": "Control Plane",
+            "group": "Dashboard",
             "icon": "network-wired",
             "pages": [
-              "control-plane/overview",
-              "control-plane/onboarding",
-              "control-plane/license-regions",
-              "control-plane/app-setup",
-              "control-plane/billing"
+              "dashboard/overview",
+              "dashboard/onboarding",
+              "dashboard/license-regions",
+              "dashboard/app-setup",
+              "dashboard/billing"
             ]
           },
           {

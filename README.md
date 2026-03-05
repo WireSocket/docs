@@ -6,7 +6,7 @@ This repository contains the source code for the official WireSocket documentati
 
 WireSocket is a globally distributed Yjs sync infrastructure. This documentation is divided into three primary sections:
 
-1.  **[Control Plane](/control-plane/overview)**: Management of tenants, apps, plans, and JWT authentication.
+1.  **[Dashboard](/dashboard/overview)**: Management of tenants, apps, plans, and JWT authentication.
 2.  **[Data Plane](/data-plane/dataplane)**: Real-time synchronization, document discovery, regional nodes, and editor setup.
 3.  **[API Reference](/api-reference/introduction)**: Detailed endpoint documentation for Discovery, Usage, and WebSocket sync.
 
@@ -39,7 +39,7 @@ Changes pushed to the `main` branch are automatically deployed via the Mintlify 
 ## Maintenance
 
 - **`docs.json`**: Controls the sidebar navigation and global theme configuration.
-- **`control-plane/`**: Documentation for account and resource management.
+- **`dashboard/`**: Documentation for Dashboard account and resource management.
 - **`data-plane/`**: Documentation for the sync engine and regional architecture.
 - **`api-reference/`**: Endpoint specifications.
 
